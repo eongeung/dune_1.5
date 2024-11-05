@@ -13,7 +13,8 @@
 #define N_LAYER 2
 #define MAP_WIDTH	60
 #define MAP_HEIGHT	18
-char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH];
+extern char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH];
+extern char backbuf[MAP_HEIGHT][MAP_WIDTH];
 
 
 /* ================= 위치와 방향 =================== */
@@ -91,5 +92,30 @@ typedef struct {
 	int next_move_time;	// 다음에 움직일 시간
 	int speed;
 } OBJECT_SAMPLE;
+
+// 건물 구조체 정의
+typedef struct {
+	char symbol;           // 건물의 심볼 문자
+	const char* name;      // 건물 이름
+	const char* description;  // 설명
+	int cost;              // 건설 비용
+	int durability;        // 내구도
+	const char* command;   // 명령어
+} BUILDING;
+
+// 유닛 구조체 정의
+typedef struct {
+	char symbol;            // 유닛의 심볼 문자
+	const char* name;       // 유닛 이름
+	int cost;               // 생산 비용
+	int population;         // 필요한 인구 수
+	int move_period;        // 이동 주기(ms)
+	int attack_damage;      // 공격력
+	int attack_period;      // 공격 주기(ms)
+	int health;             // 체력
+	int vision;             // 시야
+	const char* command;    // 명령어
+} UNIT;
+
 
 #endif

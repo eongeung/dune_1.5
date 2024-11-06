@@ -13,6 +13,9 @@
 #define N_LAYER 2
 #define MAP_WIDTH	60
 #define MAP_HEIGHT	18
+#define DOUBLE_CLICK_THRESHOLD 200  // 더블 클릭 인식 기준 시간(ms)
+#define SPACE_KEY 32  // 스페이스바 추가
+#define ESC_KEY 27    // ESC 키 추가
 extern char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH];
 extern char backbuf[MAP_HEIGHT][MAP_WIDTH];
 
@@ -34,7 +37,7 @@ typedef struct {
 typedef enum {
 	// k_none: 입력된 키가 없음. d_stay(안 움직이는 경우)에 대응
 	k_none = 0, k_up, k_right, k_left, k_down,
-	k_quit,
+	k_quit, k_space = SPACE_KEY, k_esc = ESC_KEY,
 	k_undef, // 정의되지 않은 키 입력	
 } KEY;
 

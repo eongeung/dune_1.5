@@ -1,17 +1,12 @@
 #include "display.h"
 #include "io.h"
 
-#define COLOR_WHITE_ON_BLACK 15       // 흰 글자, 검은 배경
-#define COLOR_BLACK_ON_WHITE 240      // 검은 글자, 흰 배경
-#define COLOR_WHITE_ON_BLUE 31        // 흰 글자, 파란 배경
-#define COLOR_WHITE_ON_RED 79         // 흰 글자, 빨간 배경
-#define COLOR_WHITE_ON_YELLOW 111     // 흰 글자, 노란 배경
-#define COLOR_WHITE_ON_GRAY 112       // 흰 글자, 회색 배경
+
 
 // 건물 정보 배열
 BUILDING buildings[] = {
     {'B', "Base", "없음", 50, 0, "H: 하베스터 생산"},
-    {'P', "Plate", "건물 짓기 전에 깔기", 1, 0, "없음"},
+    {'P', "Plate", "건물 부지", 1, 0, "없음"},
     {'D', "Dormitory", "인구 최대치 증가(10)", 2, 10, "없음"},
     {'G', "Garage", "스파이스 보관 최대치 증가(10)", 4, 10, "없음"},
     {'B', "Barracks", "보병 생산", 4, 20, "보병 생산(S: Soldier)"},
@@ -43,8 +38,8 @@ OBJECT_SAND worm2;
 const POSITION resource_pos = { 0, 0 };                // 자원 상태 표시 위치
 const POSITION map_pos = { 1, 0 };                     // 맵 표시 위치
 const POSITION system_message_pos = { MAP_HEIGHT + 1, 0 }; // 시스템 메시지 표시 위치
-const POSITION object_info_pos = { 1, MAP_WIDTH + 5 }; // 오른쪽 상단 상태창 위치
-const POSITION commands_pos = { MAP_HEIGHT + 3, MAP_WIDTH + 5 }; // 오른쪽 하단 명령창 위치
+const POSITION object_info_pos = { 1, MAP_WIDTH + 1 }; // 오른쪽 상단 상태창 위치
+const POSITION commands_pos = { MAP_HEIGHT + 3, MAP_WIDTH + 1 }; // 오른쪽 하단 명령창 위치
 
 void project(char src[N_LAYER][MAP_HEIGHT][MAP_WIDTH], char dest[MAP_HEIGHT][MAP_WIDTH]);
 void display_resource(RESOURCE resource);
@@ -52,9 +47,8 @@ void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
 void display_cursor(CURSOR cursor);
 void copy_back_to_front(void);
 void update_display(void);
-POSITION get_random_direction_position(POSITION curr_pos);
-void try_alternative_directions(OBJECT_SAND* worm, POSITION* next_pos);
-DIRECTION get_opposite_direction(DIRECTION dir);
+void clear_line(POSITION pos, int length);
+
 // 색상을 설정하는 함수
 void set_color(int color);
 
@@ -110,41 +104,6 @@ void display_worms(void) {
 
     set_color(COLOR_WHITE_ON_BLACK);
 }
-
-
-// 건물 및 유닛 정보를 배열을 통해 조회하고 표시하는 함수
-void display_building_info(char symbol) {
-    for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
-        if (buildings[i].symbol == symbol) {
-            gotoxy(object_info_pos);
-            printf("건물: %s\n설명: %s\n비용: %d\n내구도: %d\n명령어: %s\n",
-                buildings[i].name, buildings[i].description,
-                buildings[i].cost, buildings[i].durability,
-                buildings[i].command);
-            return;
-        }
-    }
-
-    printf("건물 정보가 없습니다.\n");
-}
-
-// 유닛 정보를 표시하는 함수
-void display_unit_info(char symbol) {
-    for (int i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
-        if (units[i].symbol == symbol) {
-            gotoxy(object_info_pos);
-            printf("유닛: %s\n비용: %d\n인구수: %d\n이동 주기: %d\n공격력: %d\n공격 주기: %d\n"
-                "체력: %d\n시야: %d\n명령어: %s\n",
-                units[i].name, units[i].cost, units[i].population,
-                units[i].move_period, units[i].attack_damage,
-                units[i].attack_period, units[i].health,
-                units[i].vision, units[i].command);
-            return;
-        }
-    }
-    printf("유닛 정보가 없습니다.\n");
-}
-
 
 // backbuf를 frontbuf로 복사하는 함수
 void copy_back_to_front() {
@@ -204,7 +163,7 @@ void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
 void clear_line(POSITION pos, int length) {
     gotoxy(pos);  // 줄의 시작 위치로 이동
     for (int i = 0; i < length; i++) {
-        printf("      ");  // 길이만큼 공백 출력
+        printf("             ");  // 길이만큼 공백 출력
     }
     gotoxy(pos);  // 위치를 다시 원래 위치로 복구
 }
@@ -231,11 +190,6 @@ void display_cursor(CURSOR cursor) {
 }
 
 
-
-
-
-
-
 void display_system_message(char object) {
     gotoxy(system_message_pos);  // 맵 하단 왼쪽에 표시
     switch (object) {
@@ -254,22 +208,35 @@ void display_system_message(char object) {
 }
 
 
-void display_object_info(char object) {
-   // clear_line(object_info_pos, 50); // 오브젝트 정보 위치 줄을 지움
+// 상태창
+void display_object_info(char symbol) {
+    // 상태창 위치를 먼저 지우기
+    //clear_line(object_info_pos, 8);
 
-    gotoxy(object_info_pos); // 위치를 다시 설정
-    switch (object) {
-    case 'B':
-        printf("건물 정보:\n설명: 기본 기지\n비용: 50\n명령어: H: 하베스터 생산");
-        break;
-    case 'H':
-        printf("건물 정보:\n설명: 자원 수집기\n비용: 20\n수집 속도: 5");
-        break;
-    default:
-        printf("해당 위치에 유닛/건물 정보가 없습니다.");
+    // 건물 정보 검색
+    for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
+        if (buildings[i].symbol == symbol) {
+            gotoxy(object_info_pos);
+            printf("< 건물 > 이름: %s, 비용: %d, 설명: %s\n",
+                buildings[i].name, buildings[i].cost, buildings[i].description);
+            return;
+        }
     }
-}
 
+    // 유닛 정보 검색
+    for (int i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
+        if (units[i].symbol == symbol) {
+            gotoxy(object_info_pos);
+            printf("< 유닛 > 이름: %s, 비용: %d, 설명: %s\n",
+                units[i].name, units[i].cost, units[i].command);
+            return;
+        }
+    }
+
+    // 해당 기호에 대한 정보가 없는 경우
+    gotoxy(object_info_pos);
+    printf("해당 위치에 유닛/건물 정보가 없습니다.\n");
+}
 
 void display_commands() {
     gotoxy(commands_pos); // 명령어 안내를 하단 오른쪽에 배치
@@ -296,16 +263,12 @@ void display_status_bar(int color) {
 }
 
 // 메인 display 함수
-void display(
-    RESOURCE resource,
-    char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH],
-    CURSOR cursor
-) {
-    display_resource(resource); // 자원 상태 표시 (흰 배경, 검정 글씨)
-    display_map(map);           // 맵 출력 (개체별 색상 반영)
-    display_cursor(cursor);     // 커서 표시
+void display(RESOURCE resource, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH], CURSOR cursor) {
+    display_resource(resource);
+    display_map(map);
+    display_cursor(cursor);
     display_system_message(map[0][cursor.current.row][cursor.current.column]);
-    display_building_info(map[0][cursor.current.row][cursor.current.column]);
+    display_object_info(map[0][cursor.current.row][cursor.current.column]);
     display_commands();
-    update_display();           // 업데이트 후 버퍼 복사
+    update_display();
 }

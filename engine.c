@@ -8,19 +8,23 @@
 void init(void);
 void intro(void);
 void outro(void);
-void cursor_move(DIRECTION dir);
+void cursor_move(DIRECTION dir,int steps);
 void update_worm_position(OBJECT_SAND* worm);
 POSITION get_next_position(OBJECT_SAND* obj);
-void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos); // 이 버전만 남깁니다.
+void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos);
 
 /* ================= control =================== */
 int sys_clock = 0;  // system-wide clock(ms)
 CURSOR cursor = { { 1, 1 }, {1, 1} };
-
+int should_update_status = 0;
+KEY last_arrow_key = k_undef;
+int last_arrow_time = 0;
+int selection_active = 0;
+ 
 /* ================= game data =================== */
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH] = { 0 };
-OBJECT_SAND worm1 = { {1, 1}, {MAP_HEIGHT - 2, MAP_WIDTH - 2}, 'W', 300, 300 };
-OBJECT_SAND worm2 = { {5, 5}, {MAP_HEIGHT - 3, MAP_WIDTH - 3}, 'W', 300, 300 };
+OBJECT_SAND worm1 = { {4, 4}, {MAP_HEIGHT - 2, MAP_WIDTH - 2}, 'W', 300, 300 };
+OBJECT_SAND worm2 = { {12, 42}, {MAP_HEIGHT - 3, MAP_WIDTH - 3}, 'W', 300, 300 };
 
 RESOURCE resource = {
     .spice = 0,
@@ -37,29 +41,42 @@ int main(void) {
     intro();
     display(resource, map, cursor);
 
+
     while (1) {
         KEY key = get_key();
 
+        // Worms는 독립적으로 자동으로 움직임
+        if (sys_clock >= worm1.next_move_time) {
+            update_worm_position(&worm1);
+            display(resource, map, cursor);
+        }
+        if (sys_clock >= worm2.next_move_time) {
+            update_worm_position(&worm2);
+            display(resource, map, cursor);
+        }
+
+        // 방향키, 스페이스, ESC 키에 따른 추가 작업
         if (is_arrow_key(key)) {
-            cursor_move(ktod(key)); // 방향키로 커서 이동
+            handle_double_click(key);
+            display(resource, map, cursor);
         }
-        else {
-            switch (key) {
-            case k_quit:
-                outro();
-            case k_none:
-            case k_undef:
-            default:
-                break;
-            }
+        else if (key == SPACE_KEY) {
+            handle_selection();
+        }
+        else if (key == ESC_KEY) {
+            handle_cancel();
+        }
+        else if (key == k_quit) {
+            outro();
         }
 
-        // worm 오브젝트 동작
-        update_worm_position(&worm1);
-        update_worm_position(&worm2);
+        // 상태창 갱신
+        if (should_update_status) {
+            clear_line(object_info_pos, 80);
+            display_object_info(map[0][cursor.current.row][cursor.current.column]);
+            should_update_status = 0;
+        }
 
-        // 화면 출력
-        display(resource, map, cursor);
         Sleep(TICK);
         sys_clock += 10;
     }
@@ -92,7 +109,7 @@ void init(void) {
         }
     }
 
-    // layer 1(map[1])은 비워 두기(-1로 채움)
+    //MAP-건들면 안됨 절대 안됨 맵 사라짐
     for (int i = 0; i < MAP_HEIGHT; i++) {
         for (int j = 0; j < MAP_WIDTH; j++) {
             map[1][i][j] = -1;
@@ -125,17 +142,50 @@ void init(void) {
 
 }
 
-// 커서 이동 함수
-void cursor_move(DIRECTION dir) {
-    POSITION curr = cursor.current;
-    POSITION new_pos = pmove(curr, dir);
+void cursor_move(DIRECTION dir, int steps) {
+    for (int i = 0; i < steps; i++) {
+        POSITION curr = cursor.current;
+        POSITION new_pos = pmove(curr, dir);
 
-    if (1 <= new_pos.row && new_pos.row <= MAP_HEIGHT - 2 &&
-        1 <= new_pos.column && new_pos.column <= MAP_WIDTH - 2) {
-        cursor.previous = cursor.current;
-        cursor.current = new_pos;
+        // 맵의 경계를 넘지 않도록 체크
+        if (1 <= new_pos.row && new_pos.row <= MAP_HEIGHT - 2 &&
+            1 <= new_pos.column && new_pos.column <= MAP_WIDTH - 2) {
+            cursor.previous = cursor.current; // 이전 위치 저장
+            cursor.current = new_pos;         // 현재 위치 업데이트
+
+            // 매 이동마다 화면 갱신을 위해 display_cursor 호출
+            display_cursor(cursor);
+            Sleep(TICK);  // 이동 시 딜레이 적용하여 움직임 시각화
+        }
     }
 }
+void handle_double_click(KEY key) {
+    int now = sys_clock;
+    int steps = 1;
+
+    // 키가 이전에 눌린 키와 동일하고, 클릭 간의 시간 차이가 기준 이하일 때
+    if (key == last_arrow_key && (now - last_arrow_time) < DOUBLE_CLICK_THRESHOLD) {
+        steps  = 4;  // 두 번 누를 시 네 칸 이동
+    }
+    cursor_move(ktod(key), steps);  // 이동 처리
+    last_arrow_key = key;
+    last_arrow_time = now;
+}
+
+
+void handle_selection() {
+    selection_active = 1;  // 선택 상태 활성화
+    clear_line(object_info_pos, 80);  // 기존 상태창 지우기
+    display_object_info(map[0][cursor.current.row][cursor.current.column]);  // 현재 위치 오브젝트 정보 표시
+}
+
+
+void handle_cancel() {
+    selection_active = 0;  // 선택 상태 비활성화
+    clear_line(object_info_pos, 80);  // 상태창 지우기
+}
+
+
 
 /* ================= worm 이동 =================== */
 void update_worm_position(OBJECT_SAND* worm) {

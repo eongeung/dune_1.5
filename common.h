@@ -27,6 +27,7 @@ typedef struct {
 typedef struct {
 	POSITION previous;  // 직전 위치
 	POSITION current;   // 현재 위치
+
 } CURSOR;
 
 // KEY : 입력 키 정의
@@ -87,10 +88,9 @@ typedef struct {
 typedef struct {
 	POSITION pos;		// 현재 위치(position)
 	POSITION dest;		// 목적지(destination)
-	char repr;			// 화면에 표시할 문자(representation)
-	int move_period;	// '몇 ms마다 한 칸 움직이는지'를 뜻함
-	int next_move_time;	// 다음에 움직일 시간
+	char repr;
 	int speed;
+	int next_move_time;
 } OBJECT_SAMPLE;
 
 // 건물 구조체 정의

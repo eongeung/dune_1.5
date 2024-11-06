@@ -44,6 +44,12 @@ const POSITION system_message_pos = { MAP_HEIGHT + 1, 0 }; // 시스템 메시지 표시
 const POSITION object_info_pos = { 1, MAP_WIDTH + 5 }; // 오른쪽 상단 상태창 위치
 const POSITION commands_pos = { MAP_HEIGHT + 3, MAP_WIDTH + 5 }; // 오른쪽 하단 명령창 위치
 
+void project(char src[N_LAYER][MAP_HEIGHT][MAP_WIDTH], char dest[MAP_HEIGHT][MAP_WIDTH]);
+void display_resource(RESOURCE resource);
+void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
+void display_cursor(CURSOR cursor);
+void copy_back_to_front(void);
+void update_display(void);
 // 색상을 설정하는 함수
 void set_color(int color);
 
@@ -145,10 +151,30 @@ void update_display() {
 }
 
 // 맵을 화면에 출력하는 함수 (backbuf에 내용 저장)
-void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
+void project(char src[N_LAYER][MAP_HEIGHT][MAP_WIDTH], char dest[MAP_HEIGHT][MAP_WIDTH]) {
     for (int i = 0; i < MAP_HEIGHT; i++) {
         for (int j = 0; j < MAP_WIDTH; j++) {
-            backbuf[i][j] = map[0][i][j];  // layer 0을 기준으로 맵을 backbuf에 저장
+            for (int k = 0; k < N_LAYER; k++) {
+                if (src[k][i][j] >= 0) {
+                    dest[i][j] = src[k][i][j];
+                }
+            }
+        }
+    }
+}
+
+void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
+    project(map, backbuf);
+
+    for (int i = 0; i < MAP_HEIGHT; i++) {
+        for (int j = 0; j < MAP_WIDTH; j++) {
+            if (frontbuf[i][j] != backbuf[i][j]) {
+                char object = backbuf[i][j];
+                set_object_color(object, i, j);  // 개체별 색상 설정
+                gotoxy((POSITION) { i + map_pos.row, j + map_pos.column });
+                printf("%c", object);
+            }
+            frontbuf[i][j] = backbuf[i][j];
         }
     }
 }
@@ -162,21 +188,21 @@ void clear_line(POSITION pos, int length) {
     gotoxy(pos);  // 위치를 다시 원래 위치로 복구
 }
 
-// 커서를 화면에 출력하는 함수 (backbuf에 내용 저장)
+// 커서 위치 표시 함수 (기존 문자를 그대로 유지하면서 커서 표시)
 void display_cursor(CURSOR cursor) {
-    // 이전 위치를 원래의 맵 상태와 색상으로 복원
-    char previous_object = backbuf[cursor.previous.row][cursor.previous.column];
-    set_object_color(previous_object, cursor.previous.row, cursor.previous.column); // 이전 위치의 색상 설정
-    gotoxy((POSITION) { cursor.previous.row + map_pos.row, cursor.previous.column + map_pos.column });
-    printf("%c", previous_object);  // 이전 위치의 맵 데이터를 표시
+    POSITION prev = cursor.previous;
+    POSITION curr = cursor.current;
 
-    // 현재 위치에 커서를 'O'로 표시
-    set_color(COLOR_WHITE_ON_BLACK);  // 'O'의 색상 설정
-    gotoxy((POSITION) { cursor.current.row + map_pos.row, cursor.current.column + map_pos.column });
-    printf("O");  // 현재 위치에 'O'를 표시하여 커서를 나타냄
+    // 이전 위치의 문자와 색상 복원
+    char prev_char = frontbuf[prev.row][prev.column];
+    set_object_color(prev_char, prev.row, prev.column);  // 이전 위치의 색상 복원
+    printc(padd(map_pos, prev), prev_char, COLOR_DEFAULT);
 
-    set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상으로 복구
+    // 현재 위치의 문자 표시 (커서 색상 사용)
+    char curr_char = frontbuf[curr.row][curr.column];
+    printc(padd(map_pos, curr), curr_char, COLOR_CURSOR);
 }
+
 
 
 
@@ -223,12 +249,11 @@ void display_commands() {
 
 // 자원 상태를 표시하는 함수 (직접 출력)
 void display_resource(RESOURCE resource) {
-    set_color(COLOR_BLACK_ON_WHITE);  // 흰색 배경, 검은 글씨로 설정
+    set_color(COLOR_BLACK_ON_WHITE);  // 흰색 배경, 검정 글씨로 설정
     gotoxy(resource_pos);
     printf("spice = %d/%d, population=%d/%d\n",
-        resource.spice, resource.spice_max,
-        resource.population, resource.population_max
-    );
+           resource.spice, resource.spice_max,
+           resource.population, resource.population_max);
     set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상 복구
 }
 
@@ -247,11 +272,11 @@ void display(
     char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH],
     CURSOR cursor
 ) {
-    display_resource(resource);
-    display_map(map);
-    display_cursor(cursor);
+    display_resource(resource); // 자원 상태 표시 (흰 배경, 검정 글씨)
+    display_map(map);           // 맵 출력 (개체별 색상 반영)
+    display_cursor(cursor);     // 커서 표시
     display_system_message(map[0][cursor.current.row][cursor.current.column]);
     display_building_info(map[0][cursor.current.row][cursor.current.column]);
     display_commands();
-    update_display();
+    update_display();           // 업데이트 후 버퍼 복사
 }

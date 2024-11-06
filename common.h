@@ -48,7 +48,7 @@ typedef enum {
 /* ================= 위치와 방향(2) =================== */
 // 편의성을 위한 함수들. KEY, POSITION, DIRECTION 구조체들을 유기적으로 변환
 
-// 편의성 함수
+// 두 POSITION을 더하는 함수
 inline POSITION padd(POSITION p1, POSITION p2) {
 	POSITION p = { p1.row + p2.row, p1.column + p2.column };
 	return p;
@@ -66,14 +66,16 @@ inline POSITION psub(POSITION p1, POSITION p2) {
 // 화살표 '키'(KEY)를 '방향'(DIRECTION)으로 변환. 정수 값은 똑같으니 타입만 바꿔주면 됨
 #define ktod(k)		(DIRECTION)(k)
 
-// DIRECTION을 POSITION 벡터로 변환하는 함수
+// 방향을 POSITION으로 변환하는 함수
 inline POSITION dtop(DIRECTION d) {
 	static POSITION direction_vector[] = { {0, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 0} };
 	return direction_vector[d];
 }
 
-// p를 d 방향으로 이동시킨 POSITION
-#define pmove(p, d)		(padd((p), dtop(d)))
+// p를 d 방향으로 이동시키는 함수
+inline POSITION pmove(POSITION p, DIRECTION d) {
+	return padd(p, dtop(d));  // `padd`와 `dtop`을 사용하여 위치 계산
+}
 
 /* ================= game data =================== */
 typedef struct {
@@ -91,7 +93,7 @@ typedef struct {
 	char repr;
 	int speed;
 	int next_move_time;
-} OBJECT_SAMPLE;
+} OBJECT_SAND;
 
 // 건물 구조체 정의
 typedef struct {

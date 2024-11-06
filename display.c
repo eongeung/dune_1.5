@@ -36,6 +36,8 @@ UNIT units[] = {
 char backbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 };  // 새로운 프레임을 저장할 버퍼
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]; // 맵 레이어 저장
 char frontbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 }; // 현재 화면에 표시 중인 버퍼
+OBJECT_SAND worm1;
+OBJECT_SAND worm2;
 
 // 위치 설정
 const POSITION resource_pos = { 0, 0 };                // 자원 상태 표시 위치
@@ -50,6 +52,9 @@ void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
 void display_cursor(CURSOR cursor);
 void copy_back_to_front(void);
 void update_display(void);
+POSITION get_random_direction_position(POSITION curr_pos);
+void try_alternative_directions(OBJECT_SAND* worm, POSITION* next_pos);
+DIRECTION get_opposite_direction(DIRECTION dir);
 // 색상을 설정하는 함수
 void set_color(int color);
 
@@ -83,13 +88,29 @@ void set_object_color(char object, int row, int col) {
     else if (object == 'R') {
         set_color(COLOR_WHITE_ON_GRAY); // 바위(Rock)은 흰 글자, 회색 배경
     }
-    else if (object == 'W' || object == '5') {
+    else if (object == '5'|| object == 'w') {
         set_color(COLOR_WHITE_ON_YELLOW); // Worm과 Spice는 노란 배경에 흰 글자
     }
     else {
         set_color(COLOR_WHITE_ON_BLACK); // 기본 색상 (흰 글자, 검은 배경)
     }
 }
+
+// W 표시 및 커서 표시 함수
+void display_worms(void) {
+    // worm1 표시
+    gotoxy(padd(map_pos, worm1.pos));
+    set_color(COLOR_WHITE_ON_YELLOW);
+    printf("%c", worm1.repr);
+
+    // worm2 표시
+    gotoxy(padd(map_pos, worm2.pos));
+    set_color(COLOR_WHITE_ON_YELLOW);
+    printf("%c", worm2.repr);
+
+    set_color(COLOR_WHITE_ON_BLACK);
+}
+
 
 // 건물 및 유닛 정보를 배열을 통해 조회하고 표시하는 함수
 void display_building_info(char symbol) {
@@ -194,14 +215,22 @@ void display_cursor(CURSOR cursor) {
     POSITION curr = cursor.current;
 
     // 이전 위치의 문자와 색상 복원
-    char prev_char = frontbuf[prev.row][prev.column];
+    char prev_char = backbuf[prev.row][prev.column];  // 이전 위치의 원래 문자
     set_object_color(prev_char, prev.row, prev.column);  // 이전 위치의 색상 복원
-    printc(padd(map_pos, prev), prev_char, COLOR_DEFAULT);
+    gotoxy((POSITION) { prev.row + map_pos.row, prev.column + map_pos.column });
+    printf("%c", prev_char);
 
-    // 현재 위치의 문자 표시 (커서 색상 사용)
-    char curr_char = frontbuf[curr.row][curr.column];
-    printc(padd(map_pos, curr), curr_char, COLOR_CURSOR);
+    // 현재 위치에 커서 표시 (흰색 배경, 검정 글씨)
+    char curr_char = backbuf[curr.row][curr.column];  // 현재 위치의 원래 문자
+    set_color(COLOR_BLACK_ON_WHITE);  // 커서 색상: 흰 배경, 검정 글씨
+    gotoxy((POSITION) { curr.row + map_pos.row, curr.column + map_pos.column });
+    printf("%c", curr_char);
+
+    // 기본 색상으로 복구
+    set_color(COLOR_WHITE_ON_BLACK);
 }
+
+
 
 
 

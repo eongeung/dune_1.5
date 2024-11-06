@@ -2,29 +2,6 @@
 #include "io.h"
 
 
-
-// 건물 정보 배열
-BUILDING buildings[] = {
-    {'B', "Base", "없음", 50, 0, "H: 하베스터 생산"},
-    {'P', "Plate", "건물 부지", 1, 0, "없음"},
-    {'D', "Dormitory", "인구 최대치 증가(10)", 2, 10, "없음"},
-    {'G', "Garage", "스파이스 보관 최대치 증가(10)", 4, 10, "없음"},
-    {'B', "Barracks", "보병 생산", 4, 20, "보병 생산(S: Soldier)"},
-    {'S', "Shelter", "특수유닛 생산", 5, 30, "프레멘 생산(F: Fremen)"},
-    {'A', "Arena", "투사 생산", 3, 15, "투사 생산(F: Fighter)"},
-    {'F', "Factory", "특수유닛 생산", 5, 30, "중전차 생산(T: heavy Tank)"}
-};
-
-// 유닛 정보 배열
-UNIT units[] = {
-    {'H', "Harvester", 5, 5, 2000, 0, 0, 70, 0, "H: Harvest, M: Move"},
-    {'F', "Fremen", 5, 2, 400, 15, 200, 25, 8, "M: 이동, P: 순찰"},
-    {'S', "Soldier", 1, 1, 1000, 5, 800, 15, 1, "M: 이동"},
-    {'F', "Fighter", 1, 1, 1200, 6, 600, 10, 1, "M: 이동"},
-    {'T', "Heavy Tank", 12, 5, 3000, 40, 4000, 60, 4, "M: 이동"},
-    {'W', "Sandworm", 0, 0, 2500, 0, 10000, 0, 0, "없음"}
-};
-
 // 화면 버퍼
 
 
@@ -210,10 +187,6 @@ void display_system_message(char object) {
 
 // 상태창
 void display_object_info(char symbol) {
-    // 상태창 위치를 먼저 지우기
-    //clear_line(object_info_pos, 8);
-
-    // 건물 정보 검색
     for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
         if (buildings[i].symbol == symbol) {
             gotoxy(object_info_pos);
@@ -223,7 +196,6 @@ void display_object_info(char symbol) {
         }
     }
 
-    // 유닛 정보 검색
     for (int i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
         if (units[i].symbol == symbol) {
             gotoxy(object_info_pos);
@@ -233,7 +205,6 @@ void display_object_info(char symbol) {
         }
     }
 
-    // 해당 기호에 대한 정보가 없는 경우
     gotoxy(object_info_pos);
     printf("해당 위치에 유닛/건물 정보가 없습니다.\n");
 }
@@ -268,7 +239,7 @@ void display(RESOURCE resource, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH], CURSOR
     display_map(map);
     display_cursor(cursor);
     display_system_message(map[0][cursor.current.row][cursor.current.column]);
-    display_object_info(map[0][cursor.current.row][cursor.current.column]);
+    //display_object_info(map[0][cursor.current.row][cursor.current.column]);
     display_commands();
     update_display();
 }

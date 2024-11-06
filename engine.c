@@ -33,6 +33,26 @@ RESOURCE resource = {
     .population_max = 0
 };
 
+BUILDING buildings[] = {
+    {'B', "Base", "없음", 50, 0, "H: 하베스터 생산"},
+    {'P', "Plate", "건물 부지", 1, 0, "없음"},
+    {'D', "Dormitory", "인구 최대치 증가(10)", 2, 10, "없음"},
+    {'G', "Garage", "스파이스 보관 최대치 증가(10)", 4, 10, "없음"},
+    {'B', "Barracks", "보병 생산", 4, 20, "보병 생산(S: Soldier)"},
+    {'S', "Shelter", "특수유닛 생산", 5, 30, "프레멘 생산(F: Fremen)"},
+    {'A', "Arena", "투사 생산", 3, 15, "투사 생산(F: Fighter)"},
+    {'F', "Factory", "특수유닛 생산", 5, 30, "중전차 생산(T: heavy Tank)"}
+};
+
+UNIT units[] = {
+    {'H', "Harvester", 5, 5, 2000, 0, 0, 70, 0, "H: Harvest, M: Move"},
+    {'F', "Fremen", 5, 2, 400, 15, 200, 25, 8, "M: 이동, P: 순찰"},
+    {'S', "Soldier", 1, 1, 1000, 5, 800, 15, 1, "M: 이동"},
+    {'F', "Fighter", 1, 1, 1200, 6, 600, 10, 1, "M: 이동"},
+    {'T', "Heavy Tank", 12, 5, 3000, 40, 4000, 60, 4, "M: 이동"},
+    {'W', "Sandworm", 0, 0, 2500, 0, 10000, 0, 0, "없음"}
+};
+
 /* ================= main() =================== */
 int main(void) {
     srand((unsigned int)time(NULL));
@@ -61,21 +81,24 @@ int main(void) {
             display(resource, map, cursor);
         }
         else if (key == SPACE_KEY) {
-            handle_selection();
+            handle_selection();  // Space bar 선택 처리
+            display(resource, map, cursor);
         }
         else if (key == ESC_KEY) {
-            handle_cancel();
+            handle_cancel();  // ESC 키로 선택 취소
+            display(resource, map, cursor);
         }
         else if (key == k_quit) {
             outro();
+            display(resource, map, cursor);
         }
 
-        // 상태창 갱신
         if (should_update_status) {
-            clear_line(object_info_pos, 80);
-            display_object_info(map[0][cursor.current.row][cursor.current.column]);
-            should_update_status = 0;
+            clear_line(object_info_pos, 80);  // 상태창 지우기
+            display_object_info(map[0][cursor.current.row][cursor.current.column]); // 현재 위치의 정보 출력
+            should_update_status = 0; // 플래그 초기화
         }
+
 
         Sleep(TICK);
         sys_clock += 10;
@@ -147,6 +170,7 @@ void cursor_move(DIRECTION dir, int steps) {
         POSITION curr = cursor.current;
         POSITION new_pos = pmove(curr, dir);
 
+
         // 맵의 경계를 넘지 않도록 체크
         if (1 <= new_pos.row && new_pos.row <= MAP_HEIGHT - 2 &&
             1 <= new_pos.column && new_pos.column <= MAP_WIDTH - 2) {
@@ -174,16 +198,19 @@ void handle_double_click(KEY key) {
 
 
 void handle_selection() {
-    selection_active = 1;  // 선택 상태 활성화
-    clear_line(object_info_pos, 80);  // 기존 상태창 지우기
-    display_object_info(map[0][cursor.current.row][cursor.current.column]);  // 현재 위치 오브젝트 정보 표시
+    char symbol = map[0][cursor.current.row][cursor.current.column];  // 현재 커서 위치의 심볼 가져오기
+    clear_line(object_info_pos, 80);  // 이전 상태창 지움
+    display_object_info(symbol);      // 심볼에 해당하는 정보 출력
+    should_update_status = 1;         // 상태 갱신 플래그 설정
 }
+
 
 
 void handle_cancel() {
     selection_active = 0;  // 선택 상태 비활성화
     clear_line(object_info_pos, 80);  // 상태창 지우기
 }
+
 
 
 

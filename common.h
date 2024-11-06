@@ -16,8 +16,11 @@
 #define DOUBLE_CLICK_THRESHOLD 200  // 더블 클릭 인식 기준 시간(ms)
 #define SPACE_KEY 32  // 스페이스바 추가
 #define ESC_KEY 27    // ESC 키 추가
+#define BUILDING_COUNT 8
+#define UNIT_COUNT 6
 extern char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH];
 extern char backbuf[MAP_HEIGHT][MAP_WIDTH];
+
 
 
 /* ================= 위치와 방향 =================== */
@@ -122,5 +125,7 @@ typedef struct {
 	const char* command;    // 명령어
 } UNIT;
 
+extern BUILDING buildings[BUILDING_COUNT];
+extern UNIT units[UNIT_COUNT];
 
 #endif

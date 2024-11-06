@@ -30,13 +30,14 @@ extern const POSITION commands_pos;
 // 지금은 자원, 맵, 커서만 표시
 // 앞으로 화면에 표시할 내용들 여기에 추가하기
 void display_system_message(char object);
-void display_object_info(char object);
+void display_object_info(char symbol);
 void display_commands(void);
 void display_resource(RESOURCE resource);
 void display_status_bar(int color);
 void handle_double_click(KEY key);
 void handle_selection();
 void handle_cancel();
+void display_cursor(CURSOR cursor);
 
 void clear_line(POSITION pos, int length);
 void display(

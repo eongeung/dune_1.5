@@ -136,6 +136,7 @@ void init(void) {
 	map[1][obj.pos.row][obj.pos.column] = 'o';
 }
 
+
 // 커서 위치를 공백으로 이동시키는 함수 예제
 void cursor_move(DIRECTION dir) {
 	POSITION curr = cursor.current;

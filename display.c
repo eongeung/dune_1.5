@@ -38,11 +38,11 @@ char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]; // 맵 레이어 저장
 char frontbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 }; // 현재 화면에 표시 중인 버퍼
 
 // 위치 설정
-const POSITION resource_pos = { 0, 0 };
-const POSITION map_pos = { 1, 0 };
-const POSITION system_message_pos = { MAP_HEIGHT + 1, 0 };
-const POSITION object_info_pos = { MAP_HEIGHT + 1, 80 };
-const POSITION commands_pos = { MAP_HEIGHT + 3, 80 };
+const POSITION resource_pos = { 0, 0 };                // 자원 상태 표시 위치
+const POSITION map_pos = { 1, 0 };                     // 맵 표시 위치
+const POSITION system_message_pos = { MAP_HEIGHT + 1, 0 }; // 시스템 메시지 표시 위치
+const POSITION object_info_pos = { 1, MAP_WIDTH + 5 }; // 오른쪽 상단 상태창 위치
+const POSITION commands_pos = { MAP_HEIGHT + 3, MAP_WIDTH + 5 }; // 오른쪽 하단 명령창 위치
 
 // 색상을 설정하는 함수
 void set_color(int color);
@@ -97,6 +97,7 @@ void display_building_info(char symbol) {
             return;
         }
     }
+
     printf("건물 정보가 없습니다.\n");
 }
 
@@ -115,20 +116,6 @@ void display_unit_info(char symbol) {
         }
     }
     printf("유닛 정보가 없습니다.\n");
-}
-// 오브젝트 정보 표시 함수 (건물 또는 유닛 정보 출력)
-void display_object_info(char object) {
-    gotoxy(object_info_pos); // 오브젝트 정보를 하단 오른쪽에 배치
-    switch (object) {
-    case 'B':
-        printf("기지: HP=1000, 생산 속도=10");
-        break;
-    case 'H':
-        printf("자원 수집기: 수집 속도=5");
-        break;
-    default:
-        printf("해당 위치에 유닛/건물 정보가 없습니다.");
-    }
 }
 
 
@@ -166,32 +153,68 @@ void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
     }
 }
 
+// 특정 줄을 지우는 함수
+void clear_line(POSITION pos, int length) {
+    gotoxy(pos);  // 줄의 시작 위치로 이동
+    for (int i = 0; i < length; i++) {
+        printf("      ");  // 길이만큼 공백 출력
+    }
+    gotoxy(pos);  // 위치를 다시 원래 위치로 복구
+}
+
 // 커서를 화면에 출력하는 함수 (backbuf에 내용 저장)
 void display_cursor(CURSOR cursor) {
-    // 이전 위치를 공백으로 표시
+    // 이전 위치를 원래의 맵 상태와 색상으로 복원
+    char previous_object = backbuf[cursor.previous.row][cursor.previous.column];
+    set_object_color(previous_object, cursor.previous.row, cursor.previous.column); // 이전 위치의 색상 설정
     gotoxy((POSITION) { cursor.previous.row + map_pos.row, cursor.previous.column + map_pos.column });
-    printf(" ");
+    printf("%c", previous_object);  // 이전 위치의 맵 데이터를 표시
 
-    // 현재 위치를 공백으로 표시
+    // 현재 위치에 커서를 'O'로 표시
+    set_color(COLOR_WHITE_ON_BLACK);  // 'O'의 색상 설정
     gotoxy((POSITION) { cursor.current.row + map_pos.row, cursor.current.column + map_pos.column });
-    printf(" ");
+    printf("O");  // 현재 위치에 'O'를 표시하여 커서를 나타냄
 
     set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상으로 복구
 }
 
-void display_system_message(char symbol) {
-    gotoxy(system_message_pos);
-    switch (symbol) {
-    case 'B': printf("Base selected: 기본 기지입니다."); break;
-    case 'H': printf("Harvester selected: 자원을 수집합니다."); break;
-    case 'P': printf("Plate selected: 건물을 놓을 수 있는 자리입니다."); break;
-    default: printf("Empty");
+
+
+
+void display_system_message(char object) {
+    gotoxy(system_message_pos);  // 맵 하단 왼쪽에 표시
+    switch (object) {
+    case 'B':
+        printf("Base selected: 기본 기지입니다.");
+        break;
+    case 'H':
+        printf("Harvester selected: 자원을 수집합니다.");
+        break;
+    case 'P':
+        printf("Plate selected: 건물을 놓을 수 있는 자리입니다.");
+        break;
+    default:
+        printf("Empty");
     }
 }
 
 
-// 오브젝트 정보 표시 함수
-void display_object_info(char object);
+void display_object_info(char object) {
+   // clear_line(object_info_pos, 50); // 오브젝트 정보 위치 줄을 지움
+
+    gotoxy(object_info_pos); // 위치를 다시 설정
+    switch (object) {
+    case 'B':
+        printf("건물 정보:\n설명: 기본 기지\n비용: 50\n명령어: H: 하베스터 생산");
+        break;
+    case 'H':
+        printf("건물 정보:\n설명: 자원 수집기\n비용: 20\n수집 속도: 5");
+        break;
+    default:
+        printf("해당 위치에 유닛/건물 정보가 없습니다.");
+    }
+}
+
 
 void display_commands() {
     gotoxy(commands_pos); // 명령어 안내를 하단 오른쪽에 배치
@@ -208,6 +231,7 @@ void display_resource(RESOURCE resource) {
     );
     set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상 복구
 }
+
 
 // 상단바를 표시하는 함수 (직접 출력)
 void display_status_bar(int color) {

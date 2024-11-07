@@ -81,7 +81,7 @@ int main(void) {
             display(resource, map, cursor);
         }
         else if (key == SPACE_KEY) {
-            handle_selection();  // Space bar 선택 처리
+            handle_selection(key);  // Space bar 선택 처리
             display(resource, map, cursor);
         }
         else if (key == ESC_KEY) {
@@ -94,7 +94,7 @@ int main(void) {
         }
 
         if (should_update_status) {
-            clear_line(object_info_pos, 80);  // 상태창 지우기
+            clear_line(object_info_pos, 80,6);  // 상태창 지우기
             display_object_info(map[0][cursor.current.row][cursor.current.column]); // 현재 위치의 정보 출력
             should_update_status = 0; // 플래그 초기화
         }
@@ -189,7 +189,7 @@ void handle_double_click(KEY key) {
 
     // 키가 이전에 눌린 키와 동일하고, 클릭 간의 시간 차이가 기준 이하일 때
     if (key == last_arrow_key && (now - last_arrow_time) < DOUBLE_CLICK_THRESHOLD) {
-        steps  = 4;  // 두 번 누를 시 네 칸 이동
+        steps  = 8;  // 두 번 누를 시 네 칸 이동
     }
     cursor_move(ktod(key), steps);  // 이동 처리
     last_arrow_key = key;
@@ -197,18 +197,18 @@ void handle_double_click(KEY key) {
 }
 
 
-void handle_selection() {
-    char symbol = map[0][cursor.current.row][cursor.current.column];  // 현재 커서 위치의 심볼 가져오기
-    clear_line(object_info_pos, 80);  // 이전 상태창 지움
+void handle_selection(KEY key) {
+    should_update_status = 1;
+    char symbol = map[0][cursor.current.row][cursor.current.column];
     display_object_info(symbol);      // 심볼에 해당하는 정보 출력
-    should_update_status = 1;         // 상태 갱신 플래그 설정
+            // 상태 갱신 플래그 설정
 }
 
 
 
 void handle_cancel() {
     selection_active = 0;  // 선택 상태 비활성화
-    clear_line(object_info_pos, 80);  // 상태창 지우기
+    clear_line(object_info_pos, 80,6);  // 상태창 지우기
 }
 
 

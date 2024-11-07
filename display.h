@@ -35,11 +35,11 @@ void display_commands(void);
 void display_resource(RESOURCE resource);
 void display_status_bar(int color);
 void handle_double_click(KEY key);
-void handle_selection();
+void handle_selection(KEY key);
 void handle_cancel();
 void display_cursor(CURSOR cursor);
 
-void clear_line(POSITION pos, int length);
+void clear_line(POSITION pos, int length, int lines);
 void display(
 	RESOURCE resource,
 	char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH],

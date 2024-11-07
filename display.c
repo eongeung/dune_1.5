@@ -15,7 +15,7 @@ OBJECT_SAND worm2;
 const POSITION resource_pos = { 0, 0 };                // 자원 상태 표시 위치
 const POSITION map_pos = { 1, 0 };                     // 맵 표시 위치
 const POSITION system_message_pos = { MAP_HEIGHT + 1, 0 }; // 시스템 메시지 표시 위치
-const POSITION object_info_pos = { 1, MAP_WIDTH + 1 }; // 오른쪽 상단 상태창 위치
+const POSITION object_info_pos = { 2, MAP_WIDTH + 2 }; // 오른쪽 상단 상태창 위치
 const POSITION commands_pos = { MAP_HEIGHT + 3, MAP_WIDTH + 1 }; // 오른쪽 하단 명령창 위치
 
 void project(char src[N_LAYER][MAP_HEIGHT][MAP_WIDTH], char dest[MAP_HEIGHT][MAP_WIDTH]);
@@ -24,7 +24,7 @@ void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
 void display_cursor(CURSOR cursor);
 void copy_back_to_front(void);
 void update_display(void);
-void clear_line(POSITION pos, int length);
+void clear_line(POSITION pos, int length, int lines);
 
 // 색상을 설정하는 함수
 void set_color(int color);
@@ -137,12 +137,14 @@ void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
 }
 
 // 특정 줄을 지우는 함수
-void clear_line(POSITION pos, int length) {
-    gotoxy(pos);  // 줄의 시작 위치로 이동
-    for (int i = 0; i < length; i++) {
-        printf("             ");  // 길이만큼 공백 출력
+void clear_line(POSITION pos, int length, int lines) {
+    for (int i = 0; i < lines; i++) {
+        gotoxy((POSITION) { pos.row + i, pos.column });
+        for (int j = 0; j < length; j++) {
+            printf(" ");
+        }
     }
-    gotoxy(pos);  // 위치를 다시 원래 위치로 복구
+    gotoxy(pos);  // 원래 위치로 복구
 }
 
 // 커서 위치 표시 함수 (기존 문자를 그대로 유지하면서 커서 표시)
@@ -187,11 +189,15 @@ void display_system_message(char object) {
 
 // 상태창
 void display_object_info(char symbol) {
+    clear_line(object_info_pos, 80,6);  // 상태창을 먼저 지움
+
     for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
         if (buildings[i].symbol == symbol) {
             gotoxy(object_info_pos);
-            printf("< 건물 > 이름: %s, 비용: %d, 설명: %s\n",
-                buildings[i].name, buildings[i].cost, buildings[i].description);
+            printf("< 건물 > 이름: %s, 비용: %d", buildings[i].name, buildings[i].cost);
+
+            gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column }); // 다음 줄로 이동
+            printf("설명: %s\n", buildings[i].description);
             return;
         }
     }
@@ -199,15 +205,18 @@ void display_object_info(char symbol) {
     for (int i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
         if (units[i].symbol == symbol) {
             gotoxy(object_info_pos);
-            printf("< 유닛 > 이름: %s, 비용: %d, 설명: %s\n",
-                units[i].name, units[i].cost, units[i].command);
+            printf("< 유닛 > 이름: %s, 비용: %d", units[i].name, units[i].cost);
+
+            gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column }); // 다음 줄로 이동
+            printf("설명: %s\n", units[i].command);
             return;
         }
     }
 
     gotoxy(object_info_pos);
-    printf("해당 위치에 유닛/건물 정보가 없습니다.\n");
+    printf("이곳은 아직 개발되지 않은 사막 지역입니다. 건물을 지으시려면 우선 Plate를 설치해 주시기 바랍니다.\n");
 }
+
 
 void display_commands() {
     gotoxy(commands_pos); // 명령어 안내를 하단 오른쪽에 배치

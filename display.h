@@ -19,6 +19,9 @@
 #define COLOR_WHITE_ON_RED 79         // 흰 글자, 빨간 배경
 #define COLOR_WHITE_ON_YELLOW 111     // 흰 글자, 노란 배경
 #define COLOR_WHITE_ON_GRAY 112       // 흰 글자, 회색 배경
+#define COLOR_YELLOW_ON_RED 108
+
+
 
 
 extern const POSITION resource_pos;
@@ -38,6 +41,7 @@ void handle_double_click(KEY key);
 void handle_selection(KEY key);
 void handle_cancel();
 void display_cursor(CURSOR cursor);
+void generate_spice_at_position(int row, int col);
 
 void clear_line(POSITION pos, int length, int lines);
 void display(

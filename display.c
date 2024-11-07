@@ -62,8 +62,11 @@ void set_object_color(char object, int row, int col) {
     else if (object == 'R') {
         set_color(COLOR_WHITE_ON_GRAY); // 바위(Rock)은 흰 글자, 회색 배경
     }
-    else if (object == '5'|| object == 'W') {
-        set_color(COLOR_WHITE_ON_YELLOW); // Worm과 Spice는 노란 배경에 흰 글자
+    else if ( isdigit(object)) {
+        set_color(COLOR_YELLOW_ON_RED); // 스파이스는 빨간 글자, 노란 배경 (주황색 구현 불가)
+    }
+    else if (object == 'W') {
+        set_color(COLOR_WHITE_ON_YELLOW); // Worm은 노란 배경에 흰 글자
     }
     else {
         set_color(COLOR_WHITE_ON_BLACK); // 기본 색상 (흰 글자, 검은 배경)

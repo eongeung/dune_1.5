@@ -13,7 +13,12 @@ void update_worm_position(OBJECT_SAND* worm);
 POSITION get_next_position(OBJECT_SAND* obj);
 void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos);
 void handle_selection(KEY key);
-
+POSITION find_nearest_harvester(OBJECT_SAND* worm);
+#define SPICE_GENERATION_INTERVAL 5000
+#define SPICE_PROBABILITY 10         //생성 주기 10%
+#define SPICE_INITIAL_AMOUNT 5      // 첫 번째 배설 시 스파이스 양
+#define SPICE_MIN_AMOUNT 1           // 최소 스파이스 양
+#define SPICE_MAX_AMOUNT 9           // 최대 스파이스 양
 /* ================= control =================== */
 int sys_clock = 0;  // system-wide clock(ms)
 RESOURCE resource = { 0, 0, 0, 0 };
@@ -23,6 +28,8 @@ int should_update_status = 0;
 KEY last_arrow_key = k_undef;
 int last_arrow_time = 0;
 int selection_active = 0;
+int first_spice = 1; // 첫 스파이스 양 설정을 위한 플래그
+int last_spice_generation_time = 0;  // 마지막 스파이스 생성 시간
 
 /* ================= game data =================== */
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH] = { 0 };
@@ -214,24 +221,101 @@ void handle_cancel() {
     clear_line(object_info_pos, 80,6);  // 상태창 지우기
 }
 
+
 /* ================= worm 이동 =================== */
 void update_worm_position(OBJECT_SAND* worm) {
     if (sys_clock < worm->next_move_time) return;
 
-    POSITION next_pos = get_next_position(worm);  // next_pos 설정
+    // 가장 가까운 하베스터(H)를 찾아 이동할 위치 설정
+    POSITION target_pos = find_nearest_harvester(worm);
 
-    // Rock 또는 벽(#)에 부딪혔을 경우
-    if (map[0][next_pos.row][next_pos.column] == 'R' || map[0][next_pos.row][next_pos.column] == '#') {
-        // Rock이나 벽에 막혀있는 경우 우회 방향을 선택
+    POSITION next_pos;
+    if (target_pos.row == -1 && target_pos.column == -1) {
+        // 타겟이 없으면 기존 방식대로 랜덤 이동
+        next_pos = get_next_position(worm);
+    }
+    else {
+        // 타겟이 있으면 그 방향으로 이동
+        next_pos = worm->pos;
+        if (target_pos.row < worm->pos.row) next_pos.row--;       // 위쪽 이동
+        else if (target_pos.row > worm->pos.row) next_pos.row++;  // 아래쪽 이동
+
+        if (target_pos.column < worm->pos.column) next_pos.column--;  // 왼쪽 이동
+        else if (target_pos.column > worm->pos.column) next_pos.column++;  // 오른쪽 이동
+    }
+
+    // Rock, 벽(#), 또는 스파이스(숫자)에 부딪혔을 경우
+    if (map[0][next_pos.row][next_pos.column] == 'R' ||
+        map[0][next_pos.row][next_pos.column] == '#' ||
+        isdigit(map[0][next_pos.row][next_pos.column])) {
+        // Rock, 벽, 스파이스에 막혀있는 경우 우회 방향을 선택
         choose_alternative_direction(worm, &next_pos);
     }
 
-    // 이동 후 위치 업데이트
+    // 하베스터를 만난 경우 처리
+    if (map[1][next_pos.row][next_pos.column] == 'H') {
+        // 하베스터를 만나면 잡아먹음
+        map[1][next_pos.row][next_pos.column] = ' ';
+        display_system_message("샌드웜이 하베스터를 잡아먹었습니다!");
+    }
+
+    // 10% 확률로 샌드웜이 지나간 위치의 오른쪽에 스파이스 배설
+    if (rand() % 100 < SPICE_PROBABILITY) {  // 0부터 99 사이의 난수로 10% 확률
+        int spice_row = worm->pos.row;
+        int spice_col = worm->pos.column + 1;  // 오른쪽에 배설
+        if (spice_col < MAP_WIDTH) {           // 맵의 경계를 넘지 않도록 체크
+            generate_spice_at_position(spice_row, spice_col);
+        }
+    }
+
+    // 샌드웜이 이동하기 전 위치를 지우고, 다음 위치로 이동
     map[1][worm->pos.row][worm->pos.column] = ' '; // 이전 위치 지움
     worm->pos = next_pos; // worm의 위치 업데이트
     map[1][worm->pos.row][worm->pos.column] = worm->repr; // 새로운 위치에 worm 표시
 
     worm->next_move_time = sys_clock + worm->speed; // 다음 이동 시간 설정
+}
+
+/* 가장 가까운 하베스터(H) 위치를 찾는 함수 */
+POSITION find_nearest_harvester(OBJECT_SAND* worm) {
+    POSITION nearest_pos = { -1, -1 };
+    int min_distance = MAP_WIDTH + MAP_HEIGHT;
+
+    for (int i = 0; i < MAP_HEIGHT; i++) {
+        for (int j = 0; j < MAP_WIDTH; j++) {
+            char symbol = map[1][i][j];
+            if (symbol == 'H') {  // 하베스터(H)만 추적
+                int distance = abs(worm->pos.row - i) + abs(worm->pos.column - j);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    nearest_pos.row = i;
+                    nearest_pos.column = j;
+                }
+            }
+        }
+    }
+
+    return nearest_pos;
+}
+
+/* 특정 위치에 스파이스 생성 */
+void generate_spice_at_position(int row, int col) {
+    int spice_amount;
+
+    // 첫 생성 시 스파이스 양을 5로 설정, 이후에는 1-9 사이의 난수
+    if (first_spice) {
+        spice_amount = SPICE_INITIAL_AMOUNT;
+        first_spice = 0;  // 첫 생성 후 플래그를 0으로 변경하여 난수 생성 활성화
+    }
+    else {
+        spice_amount = (rand() % (SPICE_MAX_AMOUNT - SPICE_MIN_AMOUNT + 1)) + SPICE_MIN_AMOUNT;
+    }
+
+    // 스파이스를 지정된 위치에 생성
+    if (map[0][row][col] == ' ') {  // 빈 공간에만 생성
+        map[0][row][col] = spice_amount + '0';  // 숫자를 문자로 변환해 맵에 저장
+        display_system_message("샌드웜이 스파이스를 배설했습니다!");
+    }
 }
 
 /* 다음 이동할 위치 계산 함수 */
@@ -250,6 +334,7 @@ POSITION get_next_position(OBJECT_SAND* obj) {
     return pmove(obj->pos, preferred_dir);  // 다음 위치 반환
 }
 
+/* 장애물 우회 이동 */
 void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos) {
     POSITION curr_pos = worm->pos;
 
@@ -268,9 +353,10 @@ void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos) {
     for (int i = 0; i < 4; i++) {
         POSITION new_pos = pmove(curr_pos, directions[i]);
 
-        // 벽(#)이나 Rock('R')이 없는 위치를 찾으면 이동
+        // Rock, 벽(#), 또는 스파이스가 없는 위치를 찾으면 이동
         if (map[0][new_pos.row][new_pos.column] != 'R' &&
             map[0][new_pos.row][new_pos.column] != '#' &&
+            !isdigit(map[0][new_pos.row][new_pos.column]) &&
             new_pos.row >= 1 && new_pos.row < MAP_HEIGHT - 1 &&
             new_pos.column >= 1 && new_pos.column < MAP_WIDTH - 1) {
             *next_pos = new_pos;

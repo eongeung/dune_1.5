@@ -7,9 +7,12 @@
 
 char backbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 };  // 새로운 프레임을 저장할 버퍼
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]; // 맵 레이어 저장
+
+
 char frontbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 }; // 현재 화면에 표시 중인 버퍼
 OBJECT_SAND worm1;
 OBJECT_SAND worm2;
+
 
 // 위치 설정
 const POSITION resource_pos = { 0, 0 };                // 자원 상태 표시 위치
@@ -66,6 +69,8 @@ void set_object_color(char object, int row, int col) {
         set_color(COLOR_WHITE_ON_BLACK); // 기본 색상 (흰 글자, 검은 배경)
     }
 }
+
+
 
 // W 표시 및 커서 표시 함수
 void display_worms(void) {
@@ -168,49 +173,35 @@ void display_cursor(CURSOR cursor) {
     set_color(COLOR_WHITE_ON_BLACK);
 }
 
-
-void display_system_message(char object) {
-    gotoxy(system_message_pos);  // 맵 하단 왼쪽에 표시
-    switch (object) {
-    case 'B':
-        printf("Base selected: 기본 기지입니다.");
-        break;
-    case 'H':
-        printf("Harvester selected: 자원을 수집합니다.");
-        break;
-    case 'P':
-        printf("Plate selected: 건물을 놓을 수 있는 자리입니다.");
-        break;
-    default:
-        printf("Empty");
-    }
+// 시스템 메시지: 작업 수행 결과나 오류 메시지 출력
+void display_system_message(const char* message) {
+    clear_line(system_message_pos, 80, 1);  // 시스템 메시지 창 초기화
+    gotoxy(system_message_pos);
+    printf("%s\n", message);
 }
 
 
-// 상태창
-void display_object_info(char symbol, CURSOR cursor) {
-    clear_line(object_info_pos, 80, 6);  // 상태창을 먼저 지움
 
-    // 유닛 레이어에서 현재 커서 위치의 유닛 심볼을 가져옴
+// 상태창: 선택된 유닛 또는 건물의 정보를 표시
+void display_object_info(char symbol, CURSOR cursor) {
+    clear_line(object_info_pos, 80, 6);  // 상태창 초기화
+
     char unitSymbol = map[1][cursor.current.row][cursor.current.column];
 
-    // 유닛 배열을 순회하여 현재 위치의 심볼과 일치하는 유닛 정보 출력
-    for (int i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
+    // 유닛 정보 표시
+    for (int i = 0; i < UNIT_COUNT; i++) {
         if (units[i].symbol == unitSymbol) {
             gotoxy(object_info_pos);
             printf("< 유닛 > 이름: %s, 체력: %d", units[i].name, units[i].health);
 
             gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column });
-            printf("? 공격력: %d, 이동 주기: %d", units[i].attack_damage, units[i].move_period);
-
-            gotoxy((POSITION) { object_info_pos.row + 2, object_info_pos.column });
-            printf("명령어: %s", units[i].command);
+            printf("공격력: %d, 이동 주기: %d", units[i].attack_damage, units[i].move_period);
             return;
         }
     }
 
-    // 유닛이 없을 경우, 건물 확인
-    for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
+    // 건물 정보 표시
+    for (int i = 0; i < BUILDING_COUNT; i++) {
         if (buildings[i].symbol == symbol) {
             gotoxy(object_info_pos);
             printf("< 건물 > 이름: %s, 비용: %d", buildings[i].name, buildings[i].cost);
@@ -221,15 +212,70 @@ void display_object_info(char symbol, CURSOR cursor) {
         }
     }
 
-    // 유닛이나 건물이 없을 경우
+    // 유닛이나 건물이 없을 경우 기본 메시지
     gotoxy(object_info_pos);
     printf("이곳은 아직 개발되지 않은 사막 지역입니다. 건물을 지으시려면 우선 Plate를 설치해 주시기 바랍니다.\n");
 }
 
+// 명령창: 선택된 유닛 또는 건물의 명령어 표시
+void display_commands(char symbol, char unitSymbol) {
+    clear_line(commands_pos, 80, 1);  // 명령창 초기화
 
-void display_commands() {
-    gotoxy(commands_pos); // 명령어 안내를 하단 오른쪽에 배치
+    // 유닛 명령어 표시
+    for (int i = 0; i < UNIT_COUNT; i++) {
+        if (units[i].symbol == unitSymbol) {
+            gotoxy(commands_pos);
+            printf("명령어: %s\n", units[i].command);
+            return;
+        }
+    }
+
+    // 건물 명령어 표시
+    for (int i = 0; i < BUILDING_COUNT; i++) {
+        if (buildings[i].symbol == symbol) {
+            gotoxy(commands_pos);
+            printf("명령어: %s\n", buildings[i].command);
+            return;
+        }
+    }
+
+    // 기본 명령어 안내
+    gotoxy(commands_pos);
     printf("[스페이스]: 선택, [방향키]: 이동, [ESC]: 취소");
+}
+
+void process_unit_commands(UNIT* unit, char command) {
+    switch (unit->symbol) {
+    case 'H':  // 하베스터
+        if (command == 'H') {
+            display_system_message("하베스터가 스파이스 채취를 시작합니다.");
+            // 채취 로직 수행
+        }
+        else if (command == 'M') {
+            display_system_message("하베스터가 이동 중입니다.");
+            // 이동 로직 수행
+        }
+        else {
+            display_system_message("잘못된 명령어입니다.");
+        }
+        break;
+    case 'F':  // 프레멘
+        if (command == 'P') {
+            display_system_message("프레멘이 순찰을 시작합니다.");
+            // 순찰 로직 수행
+        }
+        else if (command == 'M') {
+            display_system_message("프레멘이 이동 중입니다.");
+            // 이동 로직 수행
+        }
+        else {
+            display_system_message("잘못된 명령어입니다.");
+        }
+        break;
+    default:
+        display_system_message("이 유닛은 명령어를 처리할 수 없습니다.");
+        break;
+    }
 }
 
 // 자원 상태를 표시하는 함수 (직접 출력)
@@ -256,8 +302,16 @@ void display(RESOURCE resource, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH], CURSOR
     display_resource(resource);
     display_map(map);
     display_cursor(cursor);
-    display_system_message(map[0][cursor.current.row][cursor.current.column]);
-    //display_object_info(map[0][cursor.current.row][cursor.current.column]);
-    display_commands();
+    int should_update_status = 0;
+
+    display_system_message("상태창 업데이트 완료");
+    // 유닛 또는 건물 상태와 명령어 창 표시
+    if (should_update_status) {
+        char symbol = map[0][cursor.current.row][cursor.current.column];
+        char unitSymbol = map[1][cursor.current.row][cursor.current.column];
+        display_object_info(symbol, cursor);   // 상태창에 정보 표시
+        display_commands(symbol, unitSymbol);  // 명령창에 명령어 표시
+        should_update_status = 0;  // 상태 업데이트 플래그 초기화
+    }
     update_display();
 }

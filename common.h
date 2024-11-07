@@ -18,8 +18,7 @@
 #define ESC_KEY 27    // ESC 키 추가
 #define BUILDING_COUNT 8
 #define UNIT_COUNT 6
-extern char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH];
-extern char backbuf[MAP_HEIGHT][MAP_WIDTH];
+
 
 
 
@@ -123,9 +122,14 @@ typedef struct {
 	int health;             // 체력
 	int vision;             // 시야
 	const char* command;    // 명령어
+	POSITION pos;           //유닛 위치
 } UNIT;
 
 extern BUILDING buildings[BUILDING_COUNT];
 extern UNIT units[UNIT_COUNT];
+extern RESOURCE resource;
+extern CURSOR cursor;
+extern char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH];
+extern char backbuf[MAP_HEIGHT][MAP_WIDTH];
 
 #endif

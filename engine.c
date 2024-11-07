@@ -12,26 +12,22 @@ void cursor_move(DIRECTION dir,int steps);
 void update_worm_position(OBJECT_SAND* worm);
 POSITION get_next_position(OBJECT_SAND* obj);
 void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos);
+void handle_selection(KEY key);
 
 /* ================= control =================== */
 int sys_clock = 0;  // system-wide clock(ms)
-CURSOR cursor = { { 1, 1 }, {1, 1} };
+RESOURCE resource = { 0, 0, 0, 0 };
+CURSOR cursor;
+char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]; // 맵 레이어 저장
 int should_update_status = 0;
 KEY last_arrow_key = k_undef;
 int last_arrow_time = 0;
 int selection_active = 0;
- 
+
 /* ================= game data =================== */
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH] = { 0 };
 OBJECT_SAND worm1 = { {4, 4}, {MAP_HEIGHT - 2, MAP_WIDTH - 2}, 'W', 300, 300 };
 OBJECT_SAND worm2 = { {12, 42}, {MAP_HEIGHT - 3, MAP_WIDTH - 3}, 'W', 300, 300 };
-
-RESOURCE resource = {
-    .spice = 0,
-    .spice_max = 0,
-    .population = 0,
-    .population_max = 0
-};
 
 BUILDING buildings[] = {
     {'B', "Base", "없음", 50, 0, "H: 하베스터 생산"},
@@ -118,6 +114,11 @@ void outro(void) {
 }
 
 void init(void) {
+    cursor.previous.row = 1;
+    cursor.previous.column = 1;
+    cursor.current.row = 1;
+    cursor.current.column = 1;
+
     // layer 0(map[0])에 지형 생성
     for (int j = 0; j < MAP_WIDTH; j++) {
         map[0][0][j] = '#';
@@ -196,23 +197,22 @@ void handle_double_click(KEY key) {
     last_arrow_time = now;
 }
 
-
 void handle_selection(KEY key) {
     should_update_status = 1;
+
+    // 현재 커서 위치에 있는 유닛 또는 건물 심볼을 가져옴
     char symbol = map[0][cursor.current.row][cursor.current.column];
-    display_object_info(symbol,cursor);      // 심볼에 해당하는 정보 출력
-            // 상태 갱신 플래그 설정
+    char unitSymbol = map[1][cursor.current.row][cursor.current.column];
+
+    // 선택된 객체 정보를 각 창에 전달만 함
+    display_object_info(symbol, cursor);   // 상태창에 정보 전달
+    display_commands(symbol, unitSymbol);  // 명령창에 명령어 전달
 }
-
-
 
 void handle_cancel() {
     selection_active = 0;  // 선택 상태 비활성화
     clear_line(object_info_pos, 80,6);  // 상태창 지우기
 }
-
-
-
 
 /* ================= worm 이동 =================== */
 void update_worm_position(OBJECT_SAND* worm) {

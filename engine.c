@@ -95,7 +95,7 @@ int main(void) {
 
         if (should_update_status) {
             clear_line(object_info_pos, 80,6);  // 상태창 지우기
-            display_object_info(map[0][cursor.current.row][cursor.current.column]); // 현재 위치의 정보 출력
+            display_object_info(map[0][cursor.current.row][cursor.current.column],cursor); // 현재 위치의 정보 출력
             should_update_status = 0; // 플래그 초기화
         }
 
@@ -200,7 +200,7 @@ void handle_double_click(KEY key) {
 void handle_selection(KEY key) {
     should_update_status = 1;
     char symbol = map[0][cursor.current.row][cursor.current.column];
-    display_object_info(symbol);      // 심볼에 해당하는 정보 출력
+    display_object_info(symbol,cursor);      // 심볼에 해당하는 정보 출력
             // 상태 갱신 플래그 설정
 }
 

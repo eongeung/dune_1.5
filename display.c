@@ -59,7 +59,7 @@ void set_object_color(char object, int row, int col) {
     else if (object == 'R') {
         set_color(COLOR_WHITE_ON_GRAY); // 바위(Rock)은 흰 글자, 회색 배경
     }
-    else if (object == '5'|| object == 'w') {
+    else if (object == '5'|| object == 'W') {
         set_color(COLOR_WHITE_ON_YELLOW); // Worm과 Spice는 노란 배경에 흰 글자
     }
     else {
@@ -188,35 +188,40 @@ void display_system_message(char object) {
 
 
 // 상태창
-void display_object_info(char symbol) {
-    clear_line(object_info_pos, 80,6);  // 상태창을 먼저 지움
+void display_object_info(char symbol, CURSOR cursor) {  // cursor 매개변수 추가
+    clear_line(object_info_pos, 80, 6);  // 상태창을 먼저 지움
 
+    // 유닛 레이어에서 심볼 확인
+    char unitSymbol = map[1][cursor.current.row][cursor.current.column];
+    if (unitSymbol != ' ' && unitSymbol != -1) {  // 유닛이 있을 때
+        for (int i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
+            if (units[i].symbol == unitSymbol) {
+                gotoxy(object_info_pos);
+                printf("< 유닛 > 이름: %s, 비용: %d", units[i].name, units[i].cost);
+
+                gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column });
+                printf("설명: %s\n", units[i].command);
+                return;
+            }
+        }
+    }
+
+    // 유닛이 없을 경우, 건물 확인
     for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
         if (buildings[i].symbol == symbol) {
             gotoxy(object_info_pos);
             printf("< 건물 > 이름: %s, 비용: %d", buildings[i].name, buildings[i].cost);
 
-            gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column }); // 다음 줄로 이동
+            gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column });
             printf("설명: %s\n", buildings[i].description);
             return;
         }
     }
 
-    for (int i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
-        if (units[i].symbol == symbol) {
-            gotoxy(object_info_pos);
-            printf("< 유닛 > 이름: %s, 비용: %d", units[i].name, units[i].cost);
-
-            gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column }); // 다음 줄로 이동
-            printf("설명: %s\n", units[i].command);
-            return;
-        }
-    }
-
+    // 유닛이나 건물이 없을 경우
     gotoxy(object_info_pos);
     printf("이곳은 아직 개발되지 않은 사막 지역입니다. 건물을 지으시려면 우선 Plate를 설치해 주시기 바랍니다.\n");
 }
-
 
 void display_commands() {
     gotoxy(commands_pos); // 명령어 안내를 하단 오른쪽에 배치

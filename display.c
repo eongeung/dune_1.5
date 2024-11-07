@@ -188,21 +188,24 @@ void display_system_message(char object) {
 
 
 // 상태창
-void display_object_info(char symbol, CURSOR cursor) {  // cursor 매개변수 추가
+void display_object_info(char symbol, CURSOR cursor) {
     clear_line(object_info_pos, 80, 6);  // 상태창을 먼저 지움
 
-    // 유닛 레이어에서 심볼 확인
+    // 유닛 레이어에서 현재 커서 위치의 유닛 심볼을 가져옴
     char unitSymbol = map[1][cursor.current.row][cursor.current.column];
-    if (unitSymbol != ' ' && unitSymbol != -1) {  // 유닛이 있을 때
-        for (int i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
-            if (units[i].symbol == unitSymbol) {
-                gotoxy(object_info_pos);
-                printf("< 유닛 > 이름: %s, 비용: %d", units[i].name, units[i].cost);
 
-                gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column });
-                printf("설명: %s\n", units[i].command);
-                return;
-            }
+    // 유닛 배열을 순회하여 현재 위치의 심볼과 일치하는 유닛 정보 출력
+    for (int i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
+        if (units[i].symbol == unitSymbol) {
+            gotoxy(object_info_pos);
+            printf("< 유닛 > 이름: %s, 체력: %d", units[i].name, units[i].health);
+
+            gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column });
+            printf("? 공격력: %d, 이동 주기: %d", units[i].attack_damage, units[i].move_period);
+
+            gotoxy((POSITION) { object_info_pos.row + 2, object_info_pos.column });
+            printf("명령어: %s", units[i].command);
+            return;
         }
     }
 
@@ -222,6 +225,7 @@ void display_object_info(char symbol, CURSOR cursor) {  // cursor 매개변수 추가
     gotoxy(object_info_pos);
     printf("이곳은 아직 개발되지 않은 사막 지역입니다. 건물을 지으시려면 우선 Plate를 설치해 주시기 바랍니다.\n");
 }
+
 
 void display_commands() {
     gotoxy(commands_pos); // 명령어 안내를 하단 오른쪽에 배치

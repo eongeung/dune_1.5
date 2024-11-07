@@ -144,14 +144,14 @@ void init(void) {
     map[0][2][58] = 'B';  map[0][2][57] = 'B';
     map[0][1][56] = 'P';  map[0][1][55] = 'P';
     map[0][2][56] = 'P';  map[0][2][55] = 'P';
-    map[0][3][58] = 'H';  // Harvester
+    map[1][3][58] = 'H';  // Harvester
     map[0][5][58] = '5';  // Spice
 
     map[0][15][1] = 'B';  map[0][15][2] = 'B';
     map[0][16][1] = 'B';  map[0][16][2] = 'B';
     map[0][15][3] = 'P';  map[0][15][4] = 'P';
     map[0][16][3] = 'P';  map[0][16][4] = 'P';
-    map[0][14][1] = 'H';  // Harvester
+    map[1][14][1] = 'H';  // Harvester
     map[0][12][1] = '5';  // Spice
 
     map[1][worm1.pos.row][worm1.pos.column] = worm1.repr;
@@ -189,7 +189,7 @@ void handle_double_click(KEY key) {
 
     // 키가 이전에 눌린 키와 동일하고, 클릭 간의 시간 차이가 기준 이하일 때
     if (key == last_arrow_key && (now - last_arrow_time) < DOUBLE_CLICK_THRESHOLD) {
-        steps  = 8;  // 두 번 누를 시 네 칸 이동
+        steps  = 4;  // 두 번 누를 시 네 칸 이동
     }
     cursor_move(ktod(key), steps);  // 이동 처리
     last_arrow_key = key;

@@ -12,7 +12,9 @@ void set_color(int color) {
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
 }
 
-void printc(POSITION pos, char ch, int color) {
+void printc(POSITION pos, char ch, int color   
+ 
+) {
 	if (color >= 0) {
 		set_color(color);
 	}
@@ -27,7 +29,10 @@ KEY get_key(void) {
 
 	int byte = _getch();    // 입력된 키를 전달 받기
 	switch (byte) {
-	case 'q': return k_quit;  // 'q'를 누르면 종료
+	case 'q': 
+		return k_quit;  // 'q'를 누르면 종료
+	case 'H':
+		return k_h;
 	case SPACE_KEY:  // 스페이스바
 		return k_space;
 	case ESC_KEY:  // ESC

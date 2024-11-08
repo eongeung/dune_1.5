@@ -19,6 +19,12 @@
 #define BUILDING_COUNT 8
 #define UNIT_COUNT 6
 
+#define SPICE_GENERATION_INTERVAL 5000
+#define SPICE_PROBABILITY 10         //생성 주기 10%
+#define SPICE_INITIAL_AMOUNT 5      // 첫 번째 배설 시 스파이스 양
+#define SPICE_MIN_AMOUNT 1           // 최소 스파이스 양
+#define SPICE_MAX_AMOUNT 9           // 최대 스파이스 양
+
 
 
 
@@ -38,7 +44,7 @@ typedef struct {
 // KEY : 입력 키 정의
 typedef enum {
 	// k_none: 입력된 키가 없음. d_stay(안 움직이는 경우)에 대응
-	k_none = 0, k_up, k_right, k_left, k_down,
+	k_none = 0, k_up, k_right, k_left, k_down,k_h,
 	k_quit, k_space = SPACE_KEY, k_esc = ESC_KEY,
 	k_undef, // 정의되지 않은 키 입력	
 } KEY;
@@ -86,8 +92,8 @@ inline POSITION pmove(POSITION p, DIRECTION d) {
 typedef struct {
 	int spice;		// 현재 보유한 스파이스
 	int spice_max;  // 스파이스 최대 저장량
-	int population; // 현재 인구 수
-	int population_max;  // 수용 가능한 인구 수
+	int population; // 현재 유닛 수
+	int population_max;  // 최대 유닛 수
 } RESOURCE;
 
 
@@ -131,5 +137,7 @@ extern RESOURCE resource;
 extern CURSOR cursor;
 extern char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH];
 extern char backbuf[MAP_HEIGHT][MAP_WIDTH];
+
+
 
 #endif

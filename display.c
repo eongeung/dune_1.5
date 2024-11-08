@@ -1,24 +1,19 @@
 #include "display.h"
 #include "io.h"
 
-
 // 화면 버퍼
 
-
 char backbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 };  // 새로운 프레임을 저장할 버퍼
-char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]; // 맵 레이어 저장
-
-
+char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH];     // 맵 레이어 저장
 char frontbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 }; // 현재 화면에 표시 중인 버퍼
 OBJECT_SAND worm1;
 OBJECT_SAND worm2;
 
-
 // 위치 설정
-const POSITION resource_pos = { 0, 0 };                // 자원 상태 표시 위치
-const POSITION map_pos = { 1, 0 };                     // 맵 표시 위치
-const POSITION system_message_pos = { MAP_HEIGHT + 1, 0 }; // 시스템 메시지 표시 위치
-const POSITION object_info_pos = { 2, MAP_WIDTH + 2 }; // 오른쪽 상단 상태창 위치
+const POSITION resource_pos = { 0, 0 };                          // 자원 상태 표시 위치
+const POSITION map_pos = { 1, 0 };                               // 맵 표시 위치
+const POSITION system_message_pos = { MAP_HEIGHT + 1, 0 };       // 시스템 메시지 표시 위치
+const POSITION object_info_pos = { 2, MAP_WIDTH + 2 };           // 오른쪽 상단 상태창 위치
 const POSITION commands_pos = { MAP_HEIGHT + 3, MAP_WIDTH + 1 }; // 오른쪽 하단 명령창 위치
 
 void project(char src[N_LAYER][MAP_HEIGHT][MAP_WIDTH], char dest[MAP_HEIGHT][MAP_WIDTH]);
@@ -247,7 +242,7 @@ void display_commands(char symbol, char unitSymbol) {
     printf("[스페이스]: 선택, [방향키]: 이동, [ESC]: 취소");
 }
 
-void process_unit_commands(UNIT* unit, char command) {
+/*void process_unit_commands(UNIT* unit, char command) {
     switch (unit->symbol) {
     case 'H':  // 하베스터
         if (command == 'H') {
@@ -279,7 +274,7 @@ void process_unit_commands(UNIT* unit, char command) {
         display_system_message("이 유닛은 명령어를 처리할 수 없습니다.");
         break;
     }
-}
+}*/
 
 // 자원 상태를 표시하는 함수 (직접 출력)
 void display_resource(RESOURCE resource) {
@@ -307,7 +302,7 @@ void display(RESOURCE resource, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH], CURSOR
     display_cursor(cursor);
     int should_update_status = 0;
 
-    display_system_message("상태창 업데이트 완료");
+    void display_system_message(const char* message);
     // 유닛 또는 건물 상태와 명령어 창 표시
     if (should_update_status) {
         char symbol = map[0][cursor.current.row][cursor.current.column];

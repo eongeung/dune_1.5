@@ -42,6 +42,9 @@ void handle_selection(KEY key);
 void handle_cancel();
 void display_cursor(CURSOR cursor);
 void generate_spice_at_position(int row, int col);
+void process_unit_commands(UNIT* unit, char command);
+void produce_unit(char unit_type, POSITION base_pos);
+
 
 void clear_line(POSITION pos, int length, int lines);
 void display(

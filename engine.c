@@ -1,6 +1,5 @@
 ﻿#include <stdlib.h>
 #include <time.h>
-#include <assert.h>
 #include "common.h"
 #include "io.h"
 #include "display.h"
@@ -8,28 +7,33 @@
 void init(void);
 void intro(void);
 void outro(void);
-void cursor_move(DIRECTION dir,int steps);
+//void handle_input(KEY key);
+void cursor_move(DIRECTION dir, int steps);
 void update_worm_position(OBJECT_SAND* worm);
-POSITION get_next_position(OBJECT_SAND* obj);
 void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos);
 void handle_selection(KEY key);
+void produce_unit(char unit_type, POSITION base_pos);
+void handle_cancel(void);
+void generate_spice_at_position(int row, int col);
+bool is_position_empty(int row, int col);
+bool is_unit_command(KEY key);
+UNIT* get_selected_unit(POSITION pos);
+POSITION find_nearby_empty_position(POSITION base_pos);
+POSITION get_next_position(OBJECT_SAND* obj);
+
+
 POSITION find_nearest_harvester(OBJECT_SAND* worm);
-#define SPICE_GENERATION_INTERVAL 5000
-#define SPICE_PROBABILITY 10         //생성 주기 10%
-#define SPICE_INITIAL_AMOUNT 5      // 첫 번째 배설 시 스파이스 양
-#define SPICE_MIN_AMOUNT 1           // 최소 스파이스 양
-#define SPICE_MAX_AMOUNT 9           // 최대 스파이스 양
+POSITION find_nearest_harvester(OBJECT_SAND* worm);
 /* ================= control =================== */
 int sys_clock = 0;  // system-wide clock(ms)
-RESOURCE resource = { 0, 0, 0, 0 };
+RESOURCE resource = { 10, 100, 5, 50 };
 CURSOR cursor;
-char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]; // 맵 레이어 저장
 int should_update_status = 0;
 KEY last_arrow_key = k_undef;
 int last_arrow_time = 0;
 int selection_active = 0;
 int first_spice = 1; // 첫 스파이스 양 설정을 위한 플래그
-int last_spice_generation_time = 0;  // 마지막 스파이스 생성 시간
+int base_selected;
 
 /* ================= game data =================== */
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH] = { 0 };
@@ -53,8 +57,9 @@ UNIT units[] = {
     {'S', "Soldier", 1, 1, 1000, 5, 800, 15, 1, "M: 이동"},
     {'F', "Fighter", 1, 1, 1200, 6, 600, 10, 1, "M: 이동"},
     {'T', "Heavy Tank", 12, 5, 3000, 40, 4000, 60, 4, "M: 이동"},
-    {'W', "Sandworm", 0, 0, 2500, 0, 10000, 0, 0, "없음"}
+    {'W', "Sandworm", 0, 0, 2500, 19827127, 10000, 19827127, 19827127, "없음"}
 };
+
 
 /* ================= main() =================== */
 int main(void) {
@@ -83,9 +88,20 @@ int main(void) {
             handle_double_click(key);
             display(resource, map, cursor);
         }
-        else if (key == SPACE_KEY) {
-            handle_selection(key);  // Space bar 선택 처리
+        else if (key == k_h && base_selected) {  // Base가 선택된 상태에서 H 키로 하베스터 생산
+            produce_unit('H', cursor.current);  // 현재 커서 위치 (Base 위치)에서 유닛 생산
             display(resource, map, cursor);
+        }
+        else if (is_unit_command(key)) {  // 유닛 명령어 입력
+            UNIT* selected_unit = get_selected_unit(cursor.current);  // 현재 선택된 유닛 가져오기
+            if (selected_unit != NULL) {
+                process_unit_commands(selected_unit, key);  // 유닛 명령어 처리
+            }
+        }
+        else if (key == k_space) {  // 스페이스 키로 Base 선택 처리
+            handle_selection(key);
+            display(resource, map, cursor);
+
         }
         else if (key == ESC_KEY) {
             handle_cancel();  // ESC 키로 선택 취소
@@ -101,7 +117,8 @@ int main(void) {
             display_object_info(map[0][cursor.current.row][cursor.current.column],cursor); // 현재 위치의 정보 출력
             should_update_status = 0; // 플래그 초기화
         }
-
+        // 자원 및 인구 상태 표시
+        display_resource(resource);
 
         Sleep(TICK);
         sys_clock += 10;
@@ -109,6 +126,115 @@ int main(void) {
 }
 
 /* ================= subfunctions =================== */
+
+
+bool is_position_empty(int row, int col) {
+    char cell = map[0][row][col];
+    return cell == ' ';  // 빈 공간인지 확인
+}
+bool is_unit_command(KEY key) {
+    return (key == 'M' || key == 'P');  // 이동(M) 또는 순찰(P)이면 true 반환
+}
+UNIT* get_selected_unit(POSITION pos) {
+    char unitSymbol = map[1][pos.row][pos.column];  // 현재 위치의 유닛 심볼 가져오기
+    for (int i = 0; i < UNIT_COUNT; i++) {
+        if (units[i].symbol == unitSymbol) {
+            return &units[i];  // 심볼이 일치하는 유닛을 찾으면 해당 유닛의 주소 반환
+        }
+    }
+    return NULL;  // 유닛이 없으면 NULL 반환
+}
+
+
+
+POSITION find_nearby_empty_position(POSITION base_pos) {
+    POSITION directions[4] = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } };
+    for (int i = 0; i < 4; i++) {
+        POSITION new_pos = { base_pos.row + directions[i].row, base_pos.column + directions[i].column };
+        if (new_pos.row >= 1 && new_pos.row < MAP_HEIGHT - 1 &&
+            new_pos.column >= 1 && new_pos.column < MAP_WIDTH - 1 &&
+            is_position_empty(new_pos.row, new_pos.column)) {
+            return new_pos;
+        }
+    }
+    return (POSITION) { -1, -1 };  // 빈 자리가 없으면 -1, -1 반환
+}
+
+void produce_unit(char unit_type, POSITION base_pos) {
+    int required_spice = -1;
+
+    // 유닛 종류에 따라 필요한 스파이스 양 결정
+    for (int i = 0; i < UNIT_COUNT; i++) {
+        if (units[i].symbol == unit_type) {
+            required_spice = units[i].cost;
+            break;
+        }
+    }
+
+    if (required_spice == -1) {
+        display_system_message("잘못된 유닛 유형입니다");
+        return;
+    }
+
+    // 자원 확인 및 생산 가능 여부 체크
+    if (resource.spice >= required_spice && resource.population < resource.population_max) {
+        POSITION spawn_pos = find_nearby_empty_position(base_pos);  // Base 근처의 빈 공간 찾기
+
+        if (spawn_pos.row != -1 && spawn_pos.column != -1) {
+            resource.spice -= required_spice;  // 스파이스 차감
+            resource.population++;             // population 값 증가
+            map[1][spawn_pos.row][spawn_pos.column] = unit_type; // 빈 위치에 유닛 생성
+            display_system_message("기지 근처에 새로운 유닛이 준비되었습니다");
+        }
+        else {
+            display_system_message("기지 근처에 유닛을 생성할 빈 공간이 없습니다");
+        }
+    }
+    else if (resource.spice < required_spice) {
+        display_system_message("스파이스가 부족합니다");
+    }
+    else {
+        display_system_message("인구 한도에 도달했습니다");
+    }
+}
+
+void process_unit_commands(UNIT* unit, char command) {
+    switch (unit->symbol) {
+    case 'H':  // 하베스터
+        if (command == 'H') {
+            display_system_message("하베스터가 스파이스 채취를 시작합니다");
+            // TODO: 스파이스 채취 로직 추가
+        }
+        else if (command == 'M') {
+            display_system_message("하베스터가 이동 중입니다");
+            // TODO: 이동 로직 추가
+        }
+        else {
+            display_system_message("잘못된 명령어입니다");
+        }
+        break;
+
+    case 'F':  // 프레멘
+        if (command == 'P') {
+            display_system_message("프레멘이 순찰을 시작합니다");
+            // TODO: 순찰 로직 추가
+        }
+        else if (command == 'M') {
+            display_system_message("프레멘이 이동 중입니다");
+            // TODO: 이동 로직 추가
+        }
+        else {
+            display_system_message("잘못된 명령어입니다");
+        }
+        break;
+
+    default:
+        display_system_message("이 유닛은 명령을 처리할 수 없습니다");
+        break;
+    }
+}
+
+
 void intro(void) {
     printf("DUNE 1.5\n");
     Sleep(2000);
@@ -206,10 +332,20 @@ void handle_double_click(KEY key) {
 
 void handle_selection(KEY key) {
     should_update_status = 1;
-
+   
     // 현재 커서 위치에 있는 유닛 또는 건물 심볼을 가져옴
     char symbol = map[0][cursor.current.row][cursor.current.column];
     char unitSymbol = map[1][cursor.current.row][cursor.current.column];
+
+    //BASE->UNIT 생산
+    base_selected = 0;  // 기본값으로 0 설정
+    for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
+        if (buildings[i].symbol == symbol && strcmp(buildings[i].name, "Base") == 0) {
+            base_selected = 1;  // Base가 선택되었음을 표시
+            break;
+        }
+    }
+
 
     // 선택된 객체 정보를 각 창에 전달만 함
     display_object_info(symbol, cursor);   // 상태창에 정보 전달
@@ -245,18 +381,19 @@ void update_worm_position(OBJECT_SAND* worm) {
     }
 
     // Rock, 벽(#), 또는 스파이스(숫자)에 부딪혔을 경우
-    if (map[0][next_pos.row][next_pos.column] == 'R' ||
-        map[0][next_pos.row][next_pos.column] == '#' ||
-        isdigit(map[0][next_pos.row][next_pos.column])) {
-        // Rock, 벽, 스파이스에 막혀있는 경우 우회 방향을 선택
-        choose_alternative_direction(worm, &next_pos);
+    if (next_pos.row >= 0 && next_pos.row < MAP_HEIGHT && next_pos.column >= 0 && next_pos.column < MAP_WIDTH) {
+        if (map[0][next_pos.row][next_pos.column] == 'R' || map[0][next_pos.row][next_pos.column] == '#' || isdigit(map[0][next_pos.row][next_pos.column])) {
+            choose_alternative_direction(worm, &next_pos);
+        }
     }
 
+
     // 하베스터를 만난 경우 처리
-    if (map[1][next_pos.row][next_pos.column] == 'H') {
-        // 하베스터를 만나면 잡아먹음
-        map[1][next_pos.row][next_pos.column] = ' ';
-        display_system_message("샌드웜이 하베스터를 잡아먹었습니다!");
+    if (next_pos.row >= 0 && next_pos.row < MAP_HEIGHT && next_pos.column >= 0 && next_pos.column < MAP_WIDTH) {
+        if (map[1][next_pos.row][next_pos.column] == 'H') {
+            map[1][next_pos.row][next_pos.column] = ' ';
+            display_system_message("샌드웜이 하베스터를 잡아먹었습니다!");
+        }
     }
 
     // 10% 확률로 샌드웜이 지나간 위치의 오른쪽에 스파이스 배설

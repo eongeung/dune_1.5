@@ -27,7 +27,6 @@ void copy_back_to_front(void);
 void update_display(void);
 void clear_line(POSITION pos, int length, int lines);
 void add_system_message(const char* message, int type);
-void display_system_messages();
 
 // 색상을 설정하는 함수
 extern void set_color(int color);

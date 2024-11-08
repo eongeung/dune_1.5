@@ -21,12 +21,19 @@ UNIT* get_selected_unit(POSITION pos);
 POSITION find_nearby_empty_position(POSITION base_pos);
 POSITION get_next_position(OBJECT_SAND* obj);
 
+// 전역 변수로 베이스 그룹 초기화
+BASE_GROUP base_groups[] = {
+    { { {1, 57}, {1, 58}, {2, 57}, {2, 58} } },  // 첫 번째 베이스 좌표(하코넨)
+    { { {15, 1}, {15, 2}, {16, 1}, {16, 2} } }   // 두 번째 베이스 좌표(플레이어)
+};
+int base_group_count = sizeof(base_groups) / sizeof(base_groups[0]);  // 그룹 수 계산
 
-POSITION find_nearest_harvester(OBJECT_SAND* worm);
+
+
 POSITION find_nearest_harvester(OBJECT_SAND* worm);
 /* ================= control =================== */
 int sys_clock = 0;  // system-wide clock(ms)
-RESOURCE resource = { 10, 100, 5, 50 };
+RESOURCE resource = { 95, 100, 5, 50 };
 CURSOR cursor;
 int should_update_status = 0;
 KEY last_arrow_key = k_undef;
@@ -72,6 +79,7 @@ int main(void) {
 
     while (1) {
         KEY key = get_key();
+        key = tolower(key);
 
         // Worms는 독립적으로 자동으로 움직임
         if (sys_clock >= worm1.next_move_time) {
@@ -125,13 +133,14 @@ int main(void) {
     }
 }
 
-/* ================= subfunctions =================== */
-
+/* ================= subfunctions =================== */ 
 
 bool is_position_empty(int row, int col) {
-    char cell = map[0][row][col];
-    return cell == ' ';  // 빈 공간인지 확인
+    // map[1]이 빈 공간이면 true로 간주 (map[0] 확인 생략)
+    return (map[0][row][col] == ' ' || map[0][row][col] == -1) &&
+    (map[1][row][col] == ' ' || map[1][row][col] == -1);
 }
+
 bool is_unit_command(KEY key) {
     return (key == 'M' || key == 'P');  // 이동(M) 또는 순찰(P)이면 true 반환
 }
@@ -145,28 +154,52 @@ UNIT* get_selected_unit(POSITION pos) {
     return NULL;  // 유닛이 없으면 NULL 반환
 }
 
-
-
-POSITION find_nearby_empty_position(POSITION base_pos) {
-    POSITION directions[4] = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } };
-    for (int i = 0; i < 4; i++) {
-        POSITION new_pos = { base_pos.row + directions[i].row, base_pos.column + directions[i].column };
-        if (new_pos.row >= 1 && new_pos.row < MAP_HEIGHT - 1 &&
-            new_pos.column >= 1 && new_pos.column < MAP_WIDTH - 1 &&
-            is_position_empty(new_pos.row, new_pos.column)) {
-            return new_pos;
+// 베이스 그룹에서 빈 위치를 찾는 함수
+POSITION find_nearby_empty_position_from_group(POSITION selected_pos) {
+    for (int i = 0; i < base_group_count; i++) {
+        for (int j = 0; j < 4; j++) {
+            POSITION pos = base_groups[i].positions[j];
+            if (selected_pos.row == pos.row && selected_pos.column == pos.column) {
+                // 선택된 위치가 현재 그룹에 속함
+                for (int k = 0; k < 4; k++) {
+                    POSITION spawn_pos = base_groups[i].positions[k];
+                    POSITION empty_pos = find_nearby_empty_position(spawn_pos);
+                    if (empty_pos.row != -1 && empty_pos.column != -1) {
+                        return empty_pos;  // 빈 공간 위치 반환
+                    }
+                }
+            }
         }
     }
-    return (POSITION) { -1, -1 };  // 빈 자리가 없으면 -1, -1 반환
+    return (POSITION) { -1, -1 };  // 빈 공간을 찾지 못하면 -1 반환
 }
 
+POSITION find_nearby_empty_position(POSITION base_pos) {
+    POSITION directions[4] = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } }; // 상하좌우 방향
+
+    for (int i = 0; i < 4; i++) {
+        POSITION new_pos = { base_pos.row + directions[i].row, base_pos.column + directions[i].column };
+
+        // 맵 경계 내, 빈 공간인지, 그리고 유닛 레이어에 아무 것도 없는지 확인
+        if (new_pos.row >= 1 && new_pos.row < MAP_HEIGHT - 1 &&
+            new_pos.column >= 1 && new_pos.column < MAP_WIDTH - 1 &&
+            is_position_empty(new_pos.row, new_pos.column)) { // 유닛 레이어가 비어있는지 확인
+            return new_pos;  // 빈 공간 위치 반환
+        }
+    }
+    return (POSITION) { -1, -1 };  // 빈 공간을 찾지 못하면 -1 반환
+}
+
+// 기존 produce_unit 함수에서 빈 위치 찾기 부분 수정
 void produce_unit(char unit_type, POSITION base_pos) {
     int required_spice = -1;
+    int population_increase = 0;
 
     // 유닛 종류에 따라 필요한 스파이스 양 결정
     for (int i = 0; i < UNIT_COUNT; i++) {
         if (units[i].symbol == unit_type) {
             required_spice = units[i].cost;
+            population_increase = units[i].population;
             break;
         }
     }
@@ -176,13 +209,32 @@ void produce_unit(char unit_type, POSITION base_pos) {
         return;
     }
 
+    // 커서가 BASE 위에 있는지 확인
+    bool is_cursor_on_base = false;
+    for (int i = 0; i < base_group_count; i++) {
+        for (int j = 0; j < 4; j++) {
+            if (base_groups[i].positions[j].row == base_pos.row &&
+                base_groups[i].positions[j].column == base_pos.column) {
+                is_cursor_on_base = true;
+                break;
+            }
+        }
+        if (is_cursor_on_base) break;
+    }
+
+    // 커서가 BASE 위에 있을 때만 유닛 생성 가능
+    if (!is_cursor_on_base) {
+        display_system_message("기지 위에 커서가 있어야 유닛을 생성할 수 있습니다");
+        return;
+    }
+
     // 자원 확인 및 생산 가능 여부 체크
     if (resource.spice >= required_spice && resource.population < resource.population_max) {
-        POSITION spawn_pos = find_nearby_empty_position(base_pos);  // Base 근처의 빈 공간 찾기
+        POSITION spawn_pos = find_nearby_empty_position_from_group(base_pos);  // Base 그룹 내 빈 공간 찾기
 
         if (spawn_pos.row != -1 && spawn_pos.column != -1) {
-            resource.spice -= required_spice;  // 스파이스 차감
-            resource.population++;             // population 값 증가
+            resource.spice -= required_spice;               // 스파이스 차감
+            resource.population += population_increase;     // population 값 증가
             map[1][spawn_pos.row][spawn_pos.column] = unit_type; // 빈 위치에 유닛 생성
             display_system_message("기지 근처에 새로운 유닛이 준비되었습니다");
         }
@@ -234,7 +286,6 @@ void process_unit_commands(UNIT* unit, char command) {
     }
 }
 
-
 void intro(void) {
     printf("DUNE 1.5\n");
     Sleep(2000);
@@ -272,17 +323,20 @@ void init(void) {
             map[1][i][j] = -1;
         }
     }
-
+    // 각 베이스 그룹의 위치 초기화
+    for (int i = 0; i < base_group_count; i++) {
+        for (int j = 0; j < 4; j++) {
+            POSITION pos = base_groups[i].positions[j];
+            map[0][pos.row][pos.column] = 'B';  // 각 베이스의 위치에 'B' 표시
+        }
+    }
     //AI 및 플레이어 오브젝트 초기화
-    map[0][1][58] = 'B';  map[0][1][57] = 'B';
-    map[0][2][58] = 'B';  map[0][2][57] = 'B';
     map[0][1][56] = 'P';  map[0][1][55] = 'P';
     map[0][2][56] = 'P';  map[0][2][55] = 'P';
     map[1][3][58] = 'H';  // Harvester
     map[0][5][58] = '5';  // Spice
 
-    map[0][15][1] = 'B';  map[0][15][2] = 'B';
-    map[0][16][1] = 'B';  map[0][16][2] = 'B';
+    //player
     map[0][15][3] = 'P';  map[0][15][4] = 'P';
     map[0][16][3] = 'P';  map[0][16][4] = 'P';
     map[1][14][1] = 'H';  // Harvester
@@ -317,6 +371,7 @@ void cursor_move(DIRECTION dir, int steps) {
         }
     }
 }
+
 void handle_double_click(KEY key) {
     int now = sys_clock;
     int steps = 1;
@@ -357,7 +412,6 @@ void handle_cancel() {
     clear_line(object_info_pos, 80,6);  // 상태창 지우기
 }
 
-
 /* ================= worm 이동 =================== */
 void update_worm_position(OBJECT_SAND* worm) {
     if (sys_clock < worm->next_move_time) return;
@@ -387,11 +441,17 @@ void update_worm_position(OBJECT_SAND* worm) {
         }
     }
 
-
     // 하베스터를 만난 경우 처리
     if (next_pos.row >= 0 && next_pos.row < MAP_HEIGHT && next_pos.column >= 0 && next_pos.column < MAP_WIDTH) {
         if (map[1][next_pos.row][next_pos.column] == 'H') {
-            map[1][next_pos.row][next_pos.column] = ' ';
+            // 해당 유닛을 잡아먹고 population 감소
+            for (int i = 0; i < UNIT_COUNT; i++) {
+                if (units[i].symbol == 'H') {  // Harvester의 symbol이 'H'라고 가정
+                    resource.population -= units[i].population;  // population 감소
+                    break;
+                }
+            }
+            map[1][next_pos.row][next_pos.column] = -1;
             display_system_message("샌드웜이 하베스터를 잡아먹었습니다!");
         }
     }

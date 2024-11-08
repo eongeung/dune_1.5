@@ -131,6 +131,10 @@ typedef struct {
 	POSITION pos;           //À¯´Ö À§Ä¡
 } UNIT;
 
+typedef struct {
+	POSITION positions[4];  // º£ÀÌ½ºÀÇ 4°³ Ä­ÀÇ ÁÂÇ¥
+} BASE_GROUP;
+
 extern BUILDING buildings[BUILDING_COUNT];
 extern UNIT units[UNIT_COUNT];
 extern RESOURCE resource;

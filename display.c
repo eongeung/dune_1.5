@@ -242,40 +242,6 @@ void display_commands(char symbol, char unitSymbol) {
     printf("[스페이스]: 선택, [방향키]: 이동, [ESC]: 취소");
 }
 
-/*void process_unit_commands(UNIT* unit, char command) {
-    switch (unit->symbol) {
-    case 'H':  // 하베스터
-        if (command == 'H') {
-            display_system_message("하베스터가 스파이스 채취를 시작합니다.");
-            // 채취 로직 수행
-        }
-        else if (command == 'M') {
-            display_system_message("하베스터가 이동 중입니다.");
-            // 이동 로직 수행
-        }
-        else {
-            display_system_message("잘못된 명령어입니다.");
-        }
-        break;
-    case 'F':  // 프레멘
-        if (command == 'P') {
-            display_system_message("프레멘이 순찰을 시작합니다.");
-            // 순찰 로직 수행
-        }
-        else if (command == 'M') {
-            display_system_message("프레멘이 이동 중입니다.");
-            // 이동 로직 수행
-        }
-        else {
-            display_system_message("잘못된 명령어입니다.");
-        }
-        break;
-    default:
-        display_system_message("이 유닛은 명령어를 처리할 수 없습니다.");
-        break;
-    }
-}*/
-
 // 자원 상태를 표시하는 함수 (직접 출력)
 void display_resource(RESOURCE resource) {
     set_color(COLOR_BLACK_ON_WHITE);  // 흰색 배경, 검정 글씨로 설정

@@ -1,8 +1,12 @@
 #include "display.h"
 #include "io.h"
+#define MAX_MESSAGES 5  // 최대 표시할 메시지 수
+#define MESSAGE_LENGTH 80  // 메시지 길이 제한
+
+char message_log[MAX_MESSAGES][MESSAGE_LENGTH];  // 메시지 로그 버퍼
+int message_count = 0;  // 현재 메시지 수
 
 // 화면 버퍼
-
 char backbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 };  // 새로운 프레임을 저장할 버퍼
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH];     // 맵 레이어 저장
 char frontbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 }; // 현재 화면에 표시 중인 버퍼
@@ -15,7 +19,6 @@ const POSITION map_pos = { 1, 0 };                               // 맵 표시 위치
 const POSITION system_message_pos = { MAP_HEIGHT + 1, 0 };       // 시스템 메시지 표시 위치
 const POSITION object_info_pos = { 2, MAP_WIDTH + 2 };           // 오른쪽 상단 상태창 위치
 const POSITION commands_pos = { MAP_HEIGHT + 3, MAP_WIDTH + 1 }; // 오른쪽 하단 명령창 위치
-
 void project(char src[N_LAYER][MAP_HEIGHT][MAP_WIDTH], char dest[MAP_HEIGHT][MAP_WIDTH]);
 void display_resource(RESOURCE resource);
 void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
@@ -23,9 +26,11 @@ void display_cursor(CURSOR cursor);
 void copy_back_to_front(void);
 void update_display(void);
 void clear_line(POSITION pos, int length, int lines);
+void add_system_message(const char* message, int type);
+void display_system_messages();
 
 // 색상을 설정하는 함수
-void set_color(int color);
+extern void set_color(int color);
 
 // 개체별 색상 설정 함수
 void set_object_color(char object, int row, int col) {
@@ -41,10 +46,10 @@ void set_object_color(char object, int row, int col) {
         }
     }
     else if (object == 'H') {
-        if (row == 14 && col == 1) {
+        if ((row == 14 && col == 1) || (row == 14 && col == 2)) {
             set_color(COLOR_WHITE_ON_BLUE); // PLAYER의 Harvester는 파란 배경에 흰 글자
         }
-        else if (row == 3 && col == 58) {
+        else if ((row == 3 && col == 57) || (row == 3 && col == 58)) {
             set_color(COLOR_WHITE_ON_RED); // AI의 Harvester는 빨간 배경에 흰 글자
         }
         else {
@@ -67,8 +72,6 @@ void set_object_color(char object, int row, int col) {
         set_color(COLOR_WHITE_ON_BLACK); // 기본 색상 (흰 글자, 검은 배경)
     }
 }
-
-
 
 // W 표시 및 커서 표시 함수
 void display_worms(void) {
@@ -171,14 +174,43 @@ void display_cursor(CURSOR cursor) {
     set_color(COLOR_WHITE_ON_BLACK);
 }
 
-// 시스템 메시지: 작업 수행 결과나 오류 메시지 출력
-void display_system_message(const char* message) {
-    clear_line(system_message_pos, 80, 1);  // 시스템 메시지 창 초기화
-    gotoxy(system_message_pos);
-    printf("%s\n", message);
+// 메시지 로그를 화면에 표시하는 함수
+void display_system_messages(const char* message) {
+    clear_line(system_message_pos, MESSAGE_LENGTH, MAX_MESSAGES);
+
+    for (int i = 0; i < message_count; i++) {
+        gotoxy((POSITION) { system_message_pos.row + i, system_message_pos.column });
+        printf("%s", message_log[i]);
+    }
 }
+// display.c 파일에 함수 정의 추가
 
 
+
+// 메시지 로그에 새로운 메시지를 추가하고 스크롤링 처리하는 함수
+void add_system_message(const char* message, int type) {
+    if (message_count >= MAX_MESSAGES) {
+        // 가장 오래된 메시지를 제거하고 위로 스크롤
+        for (int i = 1; i < MAX_MESSAGES; i++) {
+            strncpy(message_log[i - 1], message_log[i], MESSAGE_LENGTH);
+        }
+        message_count--;
+    }
+
+    // 새로운 메시지를 추가
+    strncpy(message_log[message_count], message, MESSAGE_LENGTH - 1);
+    message_log[message_count][MESSAGE_LENGTH - 1] = '\0';
+    message_count++;
+
+    // 색상 설정 (메시지 타입에 따라 다르게 적용)
+    switch (type) {
+    case 0: set_color(COLOR_WHITE_ON_BLACK); break;  // 기본 메시지
+    case 1: set_color(COLOR_RED); break;    // 오류 메시지
+    case 2: set_color(COLOR_YELLOW); break; // 경고 메시지
+    case 3: set_color(COLOR_GREEN); break;  // 정보 메시지
+    }
+    set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상으로 복구
+}
 
 // 상태창: 선택된 유닛 또는 건물의 정보를 표시
 void display_object_info(char symbol, CURSOR cursor) {
@@ -252,15 +284,6 @@ void display_resource(RESOURCE resource) {
     set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상 복구
 }
 
-
-// 상단바를 표시하는 함수 (직접 출력)
-void display_status_bar(int color) {
-    set_color(color);
-    gotoxy((POSITION) { 0, 0 });
-    printf("Status: Player HP: 100 | Resources: Spice=50, Population=20\n");
-    set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상 복구
-}
-
 // 메인 display 함수
 void display(RESOURCE resource, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH], CURSOR cursor) {
     display_resource(resource);
@@ -268,7 +291,6 @@ void display(RESOURCE resource, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH], CURSOR
     display_cursor(cursor);
     int should_update_status = 0;
 
-    void display_system_message(const char* message);
     // 유닛 또는 건물 상태와 명령어 창 표시
     if (should_update_status) {
         char symbol = map[0][cursor.current.row][cursor.current.column];

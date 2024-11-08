@@ -135,6 +135,14 @@ typedef struct {
 	POSITION positions[4];  // 베이스의 4개 칸의 좌표
 } BASE_GROUP;
 
+// 메시지 타입 정의
+typedef enum {
+	MSG_DEFAULT,
+	MSG_ERROR,
+	MSG_WARNING,
+	MSG_INFO,
+} MessageType;
+
 extern BUILDING buildings[BUILDING_COUNT];
 extern UNIT units[UNIT_COUNT];
 extern RESOURCE resource;

@@ -1,4 +1,17 @@
-﻿#include <stdlib.h>
+﻿/* 진행사항 : 1) ~ 5) 완료,7).8) 부분 완료 
+
+문제 애매한 사항
+- spice 할 때, 주황색이 지원되지 않아 노랑색에 글씨 색깔을 바꿨습니다.
+
+-- 부탁드립니다..--
+
+시작화면일 때 꼭! 꼭! 꼭! 전체 화면으로 크기를 키워주세요
+글씨가 길어서 전체 화면 안하면 맵이 깨지는 현상이 발생합니다..
+  ++ 너무 빠르게 조작할 경우 버그가 발생할 수 있으니 마음에 여유를 가지고
+     작동 시켜주시면 감사하겠습니다
+    */
+
+#include <stdlib.h>
 #include <time.h>
 #include "common.h"
 #include "io.h"
@@ -14,7 +27,7 @@ void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos);
 void handle_selection(KEY key);
 void produce_unit(char unit_type, POSITION base_pos);
 void handle_cancel(void);
-void generate_spice_at_position(int row, int col);
+extern void generate_spice_at_position(int row, int col);
 bool is_position_empty(int row, int col);
 bool is_unit_command(KEY key);
 UNIT* get_selected_unit(POSITION pos);
@@ -27,8 +40,6 @@ BASE_GROUP base_groups[] = {
     { { {15, 1}, {15, 2}, {16, 1}, {16, 2} } }   // 두 번째 베이스 좌표(플레이어)
 };
 int base_group_count = sizeof(base_groups) / sizeof(base_groups[0]);  // 그룹 수 계산
-
-
 
 POSITION find_nearest_harvester(OBJECT_SAND* worm);
 /* ================= control =================== */
@@ -236,6 +247,10 @@ void produce_unit(char unit_type, POSITION base_pos) {
             resource.spice -= required_spice;               // 스파이스 차감
             resource.population += population_increase;     // population 값 증가
             map[1][spawn_pos.row][spawn_pos.column] = unit_type; // 빈 위치에 유닛 생성
+
+            // 색상을 설정할 때, 해당 위치의 색상을 가져와서 설정
+            //set_object_color(unit_type, spawn_pos.row, spawn_pos.column);
+            //set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상으로 복원
             display_system_message("기지 근처에 새로운 유닛이 준비되었습니다");
         }
         else {
@@ -288,7 +303,7 @@ void process_unit_commands(UNIT* unit, char command) {
 
 void intro(void) {
     printf("DUNE 1.5\n");
-    Sleep(2000);
+    Sleep(5000);
     system("cls");
 }
 

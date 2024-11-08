@@ -7,7 +7,7 @@
 
 #ifndef _DISPLAY_H_
 #define _DISPLAY_H_
-
+#define _CRT_SECURE_NO_WARNINGS
 #include "common.h"
 
 // 표시할 색상 정의. 대충 맞춰 뒀는데, 취향껏 추가하거나 변경하기
@@ -20,7 +20,9 @@
 #define COLOR_WHITE_ON_YELLOW 111     // 흰 글자, 노란 배경
 #define COLOR_WHITE_ON_GRAY 112       // 흰 글자, 회색 배경
 #define COLOR_YELLOW_ON_RED 108
-
+#define COLOR_GREEN         2
+#define COLOR_RED           4
+#define COLOR_YELLOW        6
 
 
 
@@ -36,7 +38,6 @@ void display_system_message(const char* message);
 void display_object_info(char symbol,CURSOR cursor);
 void display_commands(char symbol, char unitSymbol);
 void display_resource(RESOURCE resource);
-void display_status_bar(int color);
 void handle_double_click(KEY key);
 void handle_selection(KEY key);
 void handle_cancel();

@@ -27,6 +27,7 @@ void copy_back_to_front(void);
 void update_display(void);
 void clear_line(POSITION pos, int length, int lines);
 void add_system_message(const char* message, int type);
+void display_system_messages();
 
 // 색상을 설정하는 함수
 extern void set_color(int color);
@@ -173,42 +174,51 @@ void display_cursor(CURSOR cursor) {
     set_color(COLOR_WHITE_ON_BLACK);
 }
 
-// 메시지 로그를 화면에 표시하는 함수
-void display_system_message(const char* message) {
-    clear_line(system_message_pos, MESSAGE_LENGTH, MAX_MESSAGES);
 
+// 시스템 메시지를 화면에 표시하는 함수
+void display_system_message() {
+    // 기존 메시지 영역을 지우지 않고 메시지 출력
     for (int i = 0; i < message_count; i++) {
         gotoxy((POSITION) { system_message_pos.row + i, system_message_pos.column });
-        printf("%s", message_log[i]);
+        printf("%-60s", message_log[i]); // 각 메시지를 60자로 제한하여 출력
     }
 }
-// display.c 파일에 함수 정의 추가
 
-
-
-// 메시지 로그에 새로운 메시지를 추가하고 스크롤링 처리하는 함수
+// 시스템 메시지 추가 및 스크롤링 처리
 void add_system_message(const char* message, int type) {
+    // 메시지가 MAX_MESSAGES 이상일 때만 가장 오래된 메시지를 제거하고 위로 스크롤
     if (message_count >= MAX_MESSAGES) {
+        // 모든 메시지를 한 칸씩 앞으로 이동
         for (int i = 1; i < MAX_MESSAGES; i++) {
             strncpy(message_log[i - 1], message_log[i], MESSAGE_LENGTH);
         }
-        message_count--;
+        // 마지막 위치에 새 메시지 추가
+        strncpy(message_log[MAX_MESSAGES - 1], message, MESSAGE_LENGTH - 1);
+        message_log[MAX_MESSAGES - 1][MESSAGE_LENGTH - 1] = '\0';
+    } else {
+        // MAX_MESSAGES에 도달하기 전까지는 새로운 메시지를 순차적으로 추가
+        strncpy(message_log[message_count], message, MESSAGE_LENGTH - 1);
+        message_log[message_count][MESSAGE_LENGTH - 1] = '\0';
+        message_count++;
     }
 
-    strncpy(message_log[message_count], message, MESSAGE_LENGTH - 1);
-    message_log[message_count][MESSAGE_LENGTH - 1] = '\0';
-    message_count++;
-
+    // 메시지 타입에 따른 색상 설정
     switch (type) {
-    case 0: set_color(COLOR_WHITE_ON_BLACK); break;
-    case 1: set_color(COLOR_RED); break;
-    case 2: set_color(COLOR_YELLOW); break;
-    case 3: set_color(COLOR_GREEN); break;
+    case 0: set_color(COLOR_WHITE_ON_BLACK); break; // 기본 메시지
+    case 1: set_color(COLOR_RED); break;            // 오류 메시지
+    case 2: set_color(COLOR_YELLOW); break;         // 경고 메시지
+    case 3: set_color(COLOR_GREEN); break;          // 정보 메시지
     }
 
-    display_system_message(message);  // 시스템 메시지를 갱신하여 화면에 표시
-    set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상 복구
+    // 메시지 갱신하여 화면에 표시
+    display_system_message();
+    set_color(COLOR_WHITE_ON_BLACK); // 기본 색상 복구
 }
+
+
+
+
+
 
 
 // 상태창: 선택된 유닛 또는 건물의 정보를 표시
@@ -289,6 +299,9 @@ void display(RESOURCE resource, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH], CURSOR
     display_map(map);
     display_cursor(cursor);
     int should_update_status = 0;
+    for (int i = 0; i < MAX_MESSAGES; i++) {
+        strcpy(message_log[i], "");
+    }
 
     // 유닛 또는 건물 상태와 명령어 창 표시
     if (should_update_status) {

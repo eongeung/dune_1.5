@@ -13,7 +13,6 @@
 
 #include <stdlib.h>
 #include <time.h>
-#include "common.h"
 #include "io.h"
 #include "display.h"
 
@@ -27,7 +26,7 @@ void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos);
 void handle_selection(KEY key);
 void produce_unit(char unit_type, POSITION base_pos);
 void handle_cancel(void);
-extern void generate_spice_at_position(int row, int col);
+
 bool is_position_empty(int row, int col);
 bool is_unit_command(KEY key);
 UNIT* get_selected_unit(POSITION pos);
@@ -248,9 +247,6 @@ void produce_unit(char unit_type, POSITION base_pos) {
             resource.population += population_increase;     // population 값 증가
             map[1][spawn_pos.row][spawn_pos.column] = unit_type; // 빈 위치에 유닛 생성
 
-            // 색상을 설정할 때, 해당 위치의 색상을 가져와서 설정
-            //set_object_color(unit_type, spawn_pos.row, spawn_pos.column);
-            //set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상으로 복원
             display_system_message("기지 근처에 새로운 유닛이 준비되었습니다");
         }
         else {

@@ -174,7 +174,7 @@ void display_cursor(CURSOR cursor) {
 }
 
 // 메시지 로그를 화면에 표시하는 함수
-void display_system_messages(const char* message) {
+void display_system_message(const char* message) {
     clear_line(system_message_pos, MESSAGE_LENGTH, MAX_MESSAGES);
 
     for (int i = 0; i < message_count; i++) {
@@ -189,27 +189,27 @@ void display_system_messages(const char* message) {
 // 메시지 로그에 새로운 메시지를 추가하고 스크롤링 처리하는 함수
 void add_system_message(const char* message, int type) {
     if (message_count >= MAX_MESSAGES) {
-        // 가장 오래된 메시지를 제거하고 위로 스크롤
         for (int i = 1; i < MAX_MESSAGES; i++) {
             strncpy(message_log[i - 1], message_log[i], MESSAGE_LENGTH);
         }
         message_count--;
     }
 
-    // 새로운 메시지를 추가
     strncpy(message_log[message_count], message, MESSAGE_LENGTH - 1);
     message_log[message_count][MESSAGE_LENGTH - 1] = '\0';
     message_count++;
 
-    // 색상 설정 (메시지 타입에 따라 다르게 적용)
     switch (type) {
-    case 0: set_color(COLOR_WHITE_ON_BLACK); break;  // 기본 메시지
-    case 1: set_color(COLOR_RED); break;    // 오류 메시지
-    case 2: set_color(COLOR_YELLOW); break; // 경고 메시지
-    case 3: set_color(COLOR_GREEN); break;  // 정보 메시지
+    case 0: set_color(COLOR_WHITE_ON_BLACK); break;
+    case 1: set_color(COLOR_RED); break;
+    case 2: set_color(COLOR_YELLOW); break;
+    case 3: set_color(COLOR_GREEN); break;
     }
-    set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상으로 복구
+
+    display_system_message(message);  // 시스템 메시지를 갱신하여 화면에 표시
+    set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상 복구
 }
+
 
 // 상태창: 선택된 유닛 또는 건물의 정보를 표시
 void display_object_info(char symbol, CURSOR cursor) {

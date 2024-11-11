@@ -216,7 +216,7 @@ void produce_unit(char unit_type, POSITION base_pos) {
     }
 
     if (required_spice == -1) {
-        add_system_message("잘못된 유닛 유형입니다");
+        add_system_message("잘못된 유닛 유형입니다",1);
         return;
     }
 
@@ -235,7 +235,7 @@ void produce_unit(char unit_type, POSITION base_pos) {
 
     // 커서가 BASE 위에 있을 때만 유닛 생성 가능
     if (!is_cursor_on_base) {
-        add_system_message("기지 위에 커서가 있어야 유닛을 생성할 수 있습니다");
+        add_system_message("기지 위에 커서가 있어야 유닛을 생성할 수 있습니다",0);
         return;
     }
 
@@ -251,17 +251,17 @@ void produce_unit(char unit_type, POSITION base_pos) {
             // 색상을 설정할 때, 해당 위치의 색상을 가져와서 설정
             //set_object_color(unit_type, spawn_pos.row, spawn_pos.column);
             //set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상으로 복원
-            add_system_message("기지 근처에 새로운 유닛이 준비되었습니다");
+            add_system_message("기지 근처에 새로운 유닛이 준비되었습니다",3);
         }
         else {
-            add_system_message("기지 근처에 유닛을 생성할 빈 공간이 없습니다");
+            add_system_message("기지 근처에 유닛을 생성할 빈 공간이 없습니다",1);
         }
     }
     else if (resource.spice < required_spice) {
-        add_system_message("스파이스가 부족합니다");
+        add_system_message("스파이스가 부족합니다",2);
     }
     else {
-        add_system_message("인구 한도에 도달했습니다");
+        add_system_message("인구 한도에 도달했습니다",2);
     }
 }
 
@@ -269,34 +269,34 @@ void process_unit_commands(UNIT* unit, char command) {
     switch (unit->symbol) {
     case 'H':  // 하베스터
         if (command == 'H') {
-            add_system_message("하베스터가 스파이스 채취를 시작합니다");
+            add_system_message("하베스터가 스파이스 채취를 시작합니다",3);
             // TODO: 스파이스 채취 로직 추가
         }
         else if (command == 'M') {
-            add_system_message("하베스터가 이동 중입니다");
+            add_system_message("하베스터가 이동 중입니다",0);
             // TODO: 이동 로직 추가
         }
         else {
-            add_system_message("잘못된 명령어입니다");
+            add_system_message("잘못된 명령어입니다",1);
         }
         break;
 
     case 'F':  // 프레멘
         if (command == 'P') {
-            add_system_message("프레멘이 순찰을 시작합니다");
+            add_system_message("프레멘이 순찰을 시작합니다",3);
             // TODO: 순찰 로직 추가
         }
         else if (command == 'M') {
-            add_system_message("프레멘이 이동 중입니다");
+            add_system_message("프레멘이 이동 중입니다",0);
             // TODO: 이동 로직 추가
         }
         else {
-            add_system_message("잘못된 명령어입니다");
+            add_system_message("잘못된 명령어입니다",1);
         }
         break;
 
     default:
-        add_system_message("이 유닛은 명령을 처리할 수 없습니다");
+        add_system_message("이 유닛은 명령을 처리할 수 없습니다",1);
         break;
     }
 }
@@ -467,7 +467,7 @@ void update_worm_position(OBJECT_SAND* worm) {
                 }
             }
             map[1][next_pos.row][next_pos.column] = -1;
-            add_system_message("샌드웜이 하베스터를 잡아먹었습니다!");
+            add_system_message("샌드웜이 하베스터를 잡아먹었습니다!",1);
         }
     }
 
@@ -526,7 +526,7 @@ void generate_spice_at_position(int row, int col) {
     // 스파이스를 지정된 위치에 생성
     if (map[0][row][col] == ' ') {  // 빈 공간에만 생성
         map[0][row][col] = spice_amount + '0';  // 숫자를 문자로 변환해 맵에 저장
-        add_system_message("샌드웜이 스파이스를 배설했습니다!");
+        add_system_message("샌드웜이 스파이스를 배설했습니다!",0);
     }
 }
 

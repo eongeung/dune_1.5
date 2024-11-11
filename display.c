@@ -253,7 +253,7 @@ void display_object_info(char symbol, CURSOR cursor) {
 
     // 유닛이나 건물이 없을 경우 기본 메시지
     gotoxy(object_info_pos);
-    printf("이곳은 아직 개발되지 않은 사막 지역입니다. 건물을 지으시려면 우선 Plate를 설치해 주시기 바랍니다.\n");
+    printf("개발되지 않은 사막 지역으로, 건물 짓기 전, Plate 우선 설치해주십시오.\n");
 }
 
 // 명령창: 선택된 유닛 또는 건물의 명령어 표시

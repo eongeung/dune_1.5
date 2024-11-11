@@ -5,6 +5,7 @@
 
 char message_log[MAX_MESSAGES][MESSAGE_LENGTH];  // 메시지 로그 버퍼
 int message_count = 0;  // 현재 메시지 수
+int message_colors[MAX_MESSAGES]; // 메시지 색상 정보 저장
 
 // 화면 버퍼
 char backbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 };  // 새로운 프레임을 저장할 버퍼
@@ -16,9 +17,9 @@ OBJECT_SAND worm2;
 // 위치 설정
 const POSITION resource_pos = { 0, 0 };                          // 자원 상태 표시 위치
 const POSITION map_pos = { 1, 0 };                               // 맵 표시 위치
-const POSITION system_message_pos = { MAP_HEIGHT + 1, 0 };       // 시스템 메시지 표시 위치
+const POSITION system_message_pos = { MAP_HEIGHT + 2, 0 };       // 시스템 메시지 표시 위치
 const POSITION object_info_pos = { 2, MAP_WIDTH + 2 };           // 오른쪽 상단 상태창 위치
-const POSITION commands_pos = { MAP_HEIGHT + 3, MAP_WIDTH + 1 }; // 오른쪽 하단 명령창 위치
+const POSITION commands_pos = { MAP_HEIGHT + 2, MAP_WIDTH + 1 }; // 오른쪽 하단 명령창 위치
 void project(char src[N_LAYER][MAP_HEIGHT][MAP_WIDTH], char dest[MAP_HEIGHT][MAP_WIDTH]);
 void display_resource(RESOURCE resource);
 void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
@@ -27,7 +28,7 @@ void copy_back_to_front(void);
 void update_display(void);
 void clear_line(POSITION pos, int length, int lines);
 void add_system_message(const char* message, int type);
-void display_system_messages();
+void display_system_message(void);
 
 // 색상을 설정하는 함수
 extern void set_color(int color);
@@ -109,8 +110,10 @@ void update_display() {
             }
         }
     }
+    
     copy_back_to_front();  // 업데이트 후 backbuf를 frontbuf로 복사
     set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상으로 복구
+    
 }
 
 // 맵을 화면에 출력하는 함수 (backbuf에 내용 저장)
@@ -173,51 +176,50 @@ void display_cursor(CURSOR cursor) {
     // 기본 색상으로 복구
     set_color(COLOR_WHITE_ON_BLACK);
 }
-
-
 // 시스템 메시지를 화면에 표시하는 함수
 void display_system_message() {
-    // 기존 메시지 영역을 지우지 않고 메시지 출력
+    clear_line(system_message_pos, 60, MAX_MESSAGES); // 메시지 영역 초기화 후 표시
     for (int i = 0; i < message_count; i++) {
+        set_color(message_colors[i]); // 각 메시지에 맞는 색상 설정
         gotoxy((POSITION) { system_message_pos.row + i, system_message_pos.column });
-        printf("%-60s", message_log[i]); // 각 메시지를 60자로 제한하여 출력
+        printf("%-60s", message_log[i]); // 각 메시지를 60자로 제한하여 세로로 출력
     }
+    set_color(COLOR_WHITE_ON_BLACK); // 기본 색상 복구
 }
 
 // 시스템 메시지 추가 및 스크롤링 처리
 void add_system_message(const char* message, int type) {
-    // 메시지가 MAX_MESSAGES 이상일 때만 가장 오래된 메시지를 제거하고 위로 스크롤
+    // 메시지가 MAX_MESSAGES 이상일 때 가장 오래된 메시지를 제거하고 위로 스크롤
     if (message_count >= MAX_MESSAGES) {
         // 모든 메시지를 한 칸씩 앞으로 이동
         for (int i = 1; i < MAX_MESSAGES; i++) {
             strncpy(message_log[i - 1], message_log[i], MESSAGE_LENGTH);
+            message_colors[i - 1] = message_colors[i]; // 색상 정보도 함께 이동
         }
         // 마지막 위치에 새 메시지 추가
         strncpy(message_log[MAX_MESSAGES - 1], message, MESSAGE_LENGTH - 1);
         message_log[MAX_MESSAGES - 1][MESSAGE_LENGTH - 1] = '\0';
-    } else {
+        message_colors[MAX_MESSAGES - 1] = type; // 마지막 위치에 색상 정보 추가
+    }
+    else {
         // MAX_MESSAGES에 도달하기 전까지는 새로운 메시지를 순차적으로 추가
         strncpy(message_log[message_count], message, MESSAGE_LENGTH - 1);
         message_log[message_count][MESSAGE_LENGTH - 1] = '\0';
+        message_colors[message_count] = type; // 색상 정보 저장
         message_count++;
     }
 
     // 메시지 타입에 따른 색상 설정
     switch (type) {
-    case 0: set_color(COLOR_WHITE_ON_BLACK); break; // 기본 메시지
-    case 1: set_color(COLOR_RED); break;            // 오류 메시지
-    case 2: set_color(COLOR_YELLOW); break;         // 경고 메시지
-    case 3: set_color(COLOR_GREEN); break;          // 정보 메시지
+    case 0: message_colors[message_count - 1] = COLOR_WHITE_ON_BLACK; break; // 기본 메시지
+    case 1: message_colors[message_count - 1] = COLOR_RED; break;            // 오류 메시지
+    case 2: message_colors[message_count - 1] = COLOR_YELLOW; break;         // 경고 메시지
+    case 3: message_colors[message_count - 1] = COLOR_GREEN; break;          // 정보 메시지
     }
 
     // 메시지 갱신하여 화면에 표시
     display_system_message();
-    set_color(COLOR_WHITE_ON_BLACK); // 기본 색상 복구
 }
-
-
-
-
 
 
 
@@ -297,11 +299,10 @@ void display_resource(RESOURCE resource) {
 void display(RESOURCE resource, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH], CURSOR cursor) {
     display_resource(resource);
     display_map(map);
-    display_cursor(cursor);
+    display_cursor(cursor); 
+    display_system_message(); // 시스템 메시지 재출력
     int should_update_status = 0;
-    for (int i = 0; i < MAX_MESSAGES; i++) {
-        strcpy(message_log[i], "");
-    }
+    
 
     // 유닛 또는 건물 상태와 명령어 창 표시
     if (should_update_status) {

@@ -254,7 +254,7 @@ void produce_unit(char unit_type, POSITION base_pos) {
             add_system_message("기지 근처에 새로운 유닛이 준비되었습니다",3);
         }
         else {
-            add_system_message("기지 근처에 유닛을 생성할 빈 공간이 없습니다",1);
+            add_system_message("기지 근처에 유닛을 생성할 빈 공간이 없습니다",2);
         }
     }
     else if (resource.spice < required_spice) {

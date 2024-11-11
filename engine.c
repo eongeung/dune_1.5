@@ -1,14 +1,12 @@
 ﻿/* 진행사항 : 1) ~ 5) 완료,7).8) 부분 완료 
-
-문제 애매한 사항
-- spice 할 때, 주황색이 지원되지 않아 노랑색에 글씨 색깔을 바꿨습니다.
-
--- 부탁드립니다..--
-
-시작화면일 때 꼭! 꼭! 꼭! 전체 화면으로 크기를 키워주세요
-글씨가 길어서 전체 화면 안하면 맵이 깨지는 현상이 발생합니다..
-  ++ 너무 빠르게 조작할 경우 버그가 발생할 수 있으니 마음에 여유를 가지고
-     작동 시켜주시면 감사하겠습니다
+* 
+* 문제 애매한 사항 : spice 할 때, 주황색이 지원되지 않아 노랑색에 글씨 색깔을 바꿨습니다.
+*                    아직 하코넨 진영을 진행하지 않아, 유닛을 생산할 때 상단바에서 차감되는 현상이 발생합니다.
+* 추가 기능 : intro, outro UI 추가, 시스템메세지 심각성별 색깔 추가
+* 
+* 특이사항 : 시작화면일 때 꼭! 꼭! 꼭! 전체 화면으로 크기를 키워주세요
+             글씨가 길어서 전체 화면 안하면 맵이 깨지는 현상이 발생합니다..
+  ++ 너무 빠르게 조작할 경우 버그가 발생할 수 있으니 마음에 여유를 가지고 작동 시켜주시면 감사하겠습니다
     */
 
 #include <stdlib.h>
@@ -44,7 +42,7 @@ int base_group_count = sizeof(base_groups) / sizeof(base_groups[0]);  // 그룹 
 POSITION find_nearest_harvester(OBJECT_SAND* worm);
 /* ================= control =================== */
 int sys_clock = 0;  // system-wide clock(ms)
-RESOURCE resource = { 95, 100, 5, 50 };
+RESOURCE resource = { 15, 100, 5, 50 };
 CURSOR cursor;
 int should_update_status = 0;
 KEY last_arrow_key = k_undef;

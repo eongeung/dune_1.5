@@ -294,7 +294,7 @@ void display_commands(char symbol, char unitSymbol) {
     printf("     [스페이스]: 선택, [방향키]: 이동, [ESC]: 취소");
 }
 
-// 자원 상태를 표시하는 함수 (직접 출력)
+// 자원 상태를 표시하는 함수
 void display_resource(RESOURCE resource) {
     set_color(COLOR_BLACK_ON_WHITE);  // 흰색 배경, 검정 글씨로 설정
     gotoxy(resource_pos);

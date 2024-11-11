@@ -306,7 +306,7 @@ void process_unit_commands(UNIT* unit, char command) {
 
 void intro(void) {
     system("cls"); // 화면 초기화
-
+    Sleep(5000);
     // 텍스트를 출력하기 위한 색상 배열
     int colors[] = {
         FOREGROUND_RED | FOREGROUND_INTENSITY,

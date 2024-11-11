@@ -16,7 +16,7 @@
 #define DOUBLE_CLICK_THRESHOLD 200  // 더블 클릭 인식 기준 시간(ms)
 #define SPACE_KEY 32  // 스페이스바 추가
 #define ESC_KEY 27    // ESC 키 추가
-#define BUILDING_COUNT 8
+#define BUILDING_COUNT 9
 #define UNIT_COUNT 6
 
 #define SPICE_GENERATION_INTERVAL 5000

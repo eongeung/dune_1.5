@@ -16,11 +16,11 @@
 #include "common.h"
 #include "io.h"
 #include "display.h"
+#include <windows.h>
 
 void init(void);
 void intro(void);
 void outro(void);
-//void handle_input(KEY key);
 void cursor_move(DIRECTION dir, int steps);
 void update_worm_position(OBJECT_SAND* worm);
 void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos);
@@ -66,7 +66,8 @@ BUILDING buildings[] = {
     {'B', "Barracks", "보병 생산", 4, 20, "보병 생산(S: Soldier)"},
     {'S', "Shelter", "특수유닛 생산", 5, 30, "프레멘 생산(F: Fremen)"},
     {'A', "Arena", "투사 생산", 3, 15, "투사 생산(F: Fighter)"},
-    {'F', "Factory", "특수유닛 생산", 5, 30, "중전차 생산(T: heavy Tank)"}
+    {'F', "Factory", "특수유닛 생산", 5, 30, "중전차 생산(T: heavy Tank)"},
+    {'R', "Rock", "건물을 지을 수 없음", 0, 0, "X"}
 };
 
 UNIT units[] = {
@@ -91,6 +92,10 @@ int main(void) {
     while (1) {
         KEY key = get_key();
         key = tolower(key);
+
+        if (key == k_quit) {  // 'q' 키가 눌리면 outro() 호출
+            outro();
+        }
 
         // Worms는 독립적으로 자동으로 움직임
         if (sys_clock >= worm1.next_move_time) {
@@ -302,16 +307,92 @@ void process_unit_commands(UNIT* unit, char command) {
 }
 
 void intro(void) {
-    printf("DUNE 1.5\n");
-    Sleep(5000);
+    system("cls"); // 화면 초기화
+
+    // 텍스트를 출력하기 위한 색상 배열
+    int colors[] = {
+        FOREGROUND_RED | FOREGROUND_INTENSITY,
+        FOREGROUND_GREEN | FOREGROUND_INTENSITY,
+        FOREGROUND_BLUE | FOREGROUND_INTENSITY,
+        FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY,
+        FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY,
+        FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY
+    };
+    int color_count = sizeof(colors) / sizeof(colors[0]);
+
+    // 텍스트를 한 줄씩 출력하며 색상 변화와 대기 시간 설정
+    for (int j = 0; j < 3; j++) { // 전체 출력 반복 횟수
+        for (int i = 0; i < color_count; i++) {
+            // 색상 설정
+            SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), colors[i]);
+            printf("\n\n\n");
+            printf("    ######   ##   ## ####    ## ######    \n");
+            printf("    ##   ##  ##   ## ## ##   ## ##        \n");
+            printf("    ##    #  ##   ## ##  ##  ## ####      \n");
+            printf("    ##   ##  ##   ## ##   ## ## ##        \n");
+            printf("    ######    #####  ##    #### ######    \n");
+            printf("\n\n");
+            printf("\t\t    Version 1.5\n\n");
+
+            Sleep(200); // 각 색상에서 0.2초 대기
+            system("cls"); // 화면 지우기
+        }
+    }
+
+    // 마지막으로 빨간색으로 고정하여 표시
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED | FOREGROUND_INTENSITY);
+    printf("\n\n\n");
+    printf("    ######   ##   ## ####    ## ######    \n");
+    printf("    ##   ##  ##   ## ## ##   ## ##        \n");
+    printf("    ##    #  ##   ## ##  ##  ## ####      \n");
+    printf("    ##   ##  ##   ## ##   ## ## ##        \n");
+    printf("    ######    #####  ##    #### ######    \n");
+    printf("\n\n");
+    printf("\t\t    Version 1.5\n\n");
+
+    Sleep(3000); // 3초 대기
+
+    // 텍스트 색상 초기화
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    system("cls"); // 화면 지우기
+    printf("게임이 곧 시작됩니다...\n");
+    Sleep(2000); // 2초간 대기
     system("cls");
 }
 
+
 void outro(void) {
-    printf("exiting...\n");
+    // 텍스트 색상을 빨간색으로 설정
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    printf("\n\n");
+
+    // 텍스트가 사라지는 효과를 위해 여러 줄로 텍스트를 띄우고 지우기
+    for (int i = 0; i < 3; i++) {
+        SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_INTENSITY);
+        printf("    ######   ##   ## ####    ## ######    \n");
+        printf("    ##   ##  ##   ## ## ##   ## ##        \n");
+        printf("    ##    #  ##   ## ##  ##  ## ####      \n");
+        printf("    ##   ##  ##   ## ##   ## ## ##        \n");
+        printf("    ######    #####  ##    #### ######    \n");
+        printf("\n");
+
+        Sleep(500); // 잠깐 대기 후
+        system("cls"); // 화면 지우기
+        Sleep(300); // 깜빡임 효과
+    }
+
+    // 마지막 문구를 서서히 나타나게 하기
+    const char* message = "Thanks for playing DUNE 1.5!\nExiting...";
+    for (int i = 0; i < strlen(message); i++) {
+        SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+        printf("%c", message[i]);
+        Sleep(100); // 글자가 하나씩 나타나는 효과
+    }
+
+    Sleep(2000); // 2초 대기
+    SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE); // 색상 초기화
     exit(0);
 }
-
 void init(void) {
     cursor.previous.row = 1;
     cursor.previous.column = 1;

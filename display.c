@@ -178,11 +178,15 @@ void display_cursor(CURSOR cursor) {
 }
 // 시스템 메시지를 화면에 표시하는 함수
 void display_system_message() {
+    gotoxy((POSITION) { system_message_pos.row - 1, system_message_pos.column });
+    printf("┌──────────────────────────────────────────────────────┐");
+    gotoxy((POSITION) { system_message_pos.row + MAX_MESSAGES, system_message_pos.column });
+    printf("└──────────────────────────────────────────────────────┘");
     clear_line(system_message_pos, 60, MAX_MESSAGES); // 메시지 영역 초기화 후 표시
     for (int i = 0; i < message_count; i++) {
         set_color(message_colors[i]); // 각 메시지에 맞는 색상 설정
         gotoxy((POSITION) { system_message_pos.row + i, system_message_pos.column });
-        printf("%-60s", message_log[i]); // 각 메시지를 60자로 제한하여 세로로 출력
+        printf(" %-60s", message_log[i]); // 각 메시지를 60자로 제한하여 세로로 출력
     }
     set_color(COLOR_WHITE_ON_BLACK); // 기본 색상 복구
 }
@@ -225,19 +229,22 @@ void add_system_message(const char* message, int type) {
 
 // 상태창: 선택된 유닛 또는 건물의 정보를 표시
 void display_object_info(char symbol, CURSOR cursor) {
-    clear_line(object_info_pos, 80, 6);  // 상태창 초기화
+    gotoxy((POSITION) { object_info_pos.row - 1, object_info_pos.column });
+    printf("┌────────────────────────────────── 상태창 ──────────────────────────────────┐");
 
+    clear_line(object_info_pos, 80, 6);  // 상태창 초기화
+    
     char unitSymbol = map[1][cursor.current.row][cursor.current.column];
 
     // 유닛 정보 표시
     for (int i = 0; i < UNIT_COUNT; i++) {
         if (units[i].symbol == unitSymbol) {
             gotoxy(object_info_pos);
-            printf("< 유닛 > 이름: %s, 체력: %d", units[i].name, units[i].health);
+            printf("      < 유닛 > 이름: %s, 체력: %d", units[i].name, units[i].health);
 
             gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column });
-            printf("공격력: %d, 이동 주기: %d", units[i].attack_damage, units[i].move_period);
-            return;
+            printf("      공격력: %d, 이동 주기: %d", units[i].attack_damage, units[i].move_period);
+            return;  
         }
     }
 
@@ -245,28 +252,30 @@ void display_object_info(char symbol, CURSOR cursor) {
     for (int i = 0; i < BUILDING_COUNT; i++) {
         if (buildings[i].symbol == symbol) {
             gotoxy(object_info_pos);
-            printf("< 건물 > 이름: %s, 비용: %d", buildings[i].name, buildings[i].cost);
+            printf("      < 건물 > 이름: %s, 비용: %d", buildings[i].name, buildings[i].cost);
 
             gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column });
-            printf("설명: %s\n", buildings[i].description);
+            printf("      설명: %s\n", buildings[i].description);
             return;
         }
     }
 
     // 유닛이나 건물이 없을 경우 기본 메시지
     gotoxy(object_info_pos);
-    printf("개발되지 않은 사막 지역으로, 건물 짓기 전, Plate 우선 설치해주십시오.\n");
+    printf("      개발되지 않은 사막 지역으로, 건물 짓기 전, Plate 우선 설치해주십시오.\n");
 }
 
 // 명령창: 선택된 유닛 또는 건물의 명령어 표시
 void display_commands(char symbol, char unitSymbol) {
+    gotoxy((POSITION){commands_pos.row - 1, commands_pos.column});
+    printf("┌────────────────────────────────── 명령창 ──────────────────────────────────┐");
     clear_line(commands_pos, 80, 1);  // 명령창 초기화
 
     // 유닛 명령어 표시
     for (int i = 0; i < UNIT_COUNT; i++) {
         if (units[i].symbol == unitSymbol) {
             gotoxy(commands_pos);
-            printf("명령어: %s\n", units[i].command);
+            printf("     명령어: %s\n", units[i].command);
             return;
         }
     }
@@ -275,14 +284,14 @@ void display_commands(char symbol, char unitSymbol) {
     for (int i = 0; i < BUILDING_COUNT; i++) {
         if (buildings[i].symbol == symbol) {
             gotoxy(commands_pos);
-            printf("명령어: %s\n", buildings[i].command);
+            printf("     명령어: %s\n", buildings[i].command);
             return;
         }
     }
 
     // 기본 명령어 안내
     gotoxy(commands_pos);
-    printf("[스페이스]: 선택, [방향키]: 이동, [ESC]: 취소");
+    printf("     [스페이스]: 선택, [방향키]: 이동, [ESC]: 취소");
 }
 
 // 자원 상태를 표시하는 함수 (직접 출력)

@@ -25,6 +25,9 @@ void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos);
 void handle_selection(KEY key);
 void produce_unit(char unit_type, POSITION base_pos);
 void handle_cancel(void);
+void build_plate(POSITION pos);
+void build_building(POSITION pos, char building_type);
+
 extern void generate_spice_at_position(int row, int col);
 bool is_position_empty(int row, int col);
 bool is_unit_command(KEY key);
@@ -127,6 +130,15 @@ int main(void) {
         }
         else if (key == ESC_KEY) {
             handle_cancel();  // ESC 키로 선택 취소
+            display(resource, map, cursor);
+        }
+        else if (key == 'B') {  // Plate 설치
+            build_plate(cursor.current);
+            display(resource, map, cursor);
+        }
+        else if (key == 'b') { // 건물 건설
+            char building_type = 'D'; //dormitory로 일단 설정
+            build_building(cursor.current, building_type); // 기본값 사용
             display(resource, map, cursor);
         }
         else if (key == k_quit) {
@@ -306,9 +318,9 @@ void process_unit_commands(UNIT* unit, char command) {
 
 void intro(void) {
     system("cls"); // 화면 초기화
-    Sleep(5000);
+    /*Sleep(5000);
     // 텍스트를 출력하기 위한 색상 배열
-    int colors[] = {
+   int colors[] = {
         FOREGROUND_RED | FOREGROUND_INTENSITY,
         FOREGROUND_GREEN | FOREGROUND_INTENSITY,
         FOREGROUND_BLUE | FOREGROUND_INTENSITY,
@@ -352,7 +364,7 @@ void intro(void) {
 
     // 텍스트 색상 초기화
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-    system("cls"); // 화면 지우기
+    system("cls"); // 화면 지우기*/
     printf("게임이 곧 시작됩니다...\n");
     Sleep(2000); // 2초간 대기
     system("cls");
@@ -504,6 +516,57 @@ void handle_selection(KEY key) {
 void handle_cancel() {
     selection_active = 0;  // 선택 상태 비활성화
     clear_line(object_info_pos, 80,6);  // 상태창 지우기
+}
+
+/* Plate(장판)를 설치하는 함수 */
+void build_plate(POSITION pos) {
+    if (map[0][pos.row][pos.column] == ' ' && resource.spice >= 1) { // 빈 공간 및 비용 확인
+        resource.spice -= 1; // 비용 차감
+        map[0][pos.row][pos.column] = 'P'; // Plate 설치
+        add_system_message("Plate 설치 완료", 3);
+    }
+    else {
+        add_system_message("Plate 설치 불가능 (스파이스 부족 또는 빈 공간 아님)", 1);
+    }
+}
+
+/* 특정 Plate 위에 건물을 설치하는 함수 */
+void build_building(POSITION pos, char building_type) {
+    // Plate가 아닌 위치에 건물을 설치하려고 하면 오류 메시지 출력
+    if (map[0][pos.row][pos.column] != 'P') {
+        add_system_message("Plate 위에서만 건물 설치 가능", 1);
+        return;
+    }
+
+    // 선택된 건물 유형에 따라 설치 및 자원 차감
+    for (int i = 0; i < BUILDING_COUNT; i++) {
+        if (buildings[i].symbol == building_type && resource.spice >= buildings[i].cost) {
+            resource.spice -= buildings[i].cost; // 비용 차감
+            resource.population_max += 10; // 예시로 고정된 값 추가
+
+            map[0][pos.row][pos.column] = building_type; // 해당 위치에 건물 설치
+            add_system_message("건물이 성공적으로 설치되었습니다", 3);
+            return;
+        }
+    }
+
+    // 잘못된 건물 유형이거나 자원이 부족할 경우
+    add_system_message("건물 설치 실패 (잘못된 유형 또는 자원 부족)", 1);
+}
+
+/* 선택된 위치의 Plate 또는 건물 정보를 출력 */
+void display_object_info(char symbol, CURSOR cursor) {
+    for (int i = 0; i < BUILDING_COUNT; i++) {
+        if (buildings[i].symbol == symbol) {
+            gotoxy(object_info_pos);
+            printf("<건물 정보> 이름: %s, 비용: %d, 설명: %s",
+                buildings[i].name, buildings[i].cost, buildings[i].description);
+            return;
+        }
+    }
+
+    // 선택된 위치가 빈 공간일 경우 기본 메시지 출력
+    printf("여기는 건물이 없습니다.");
 }
 
 /* ================= worm 이동 =================== */

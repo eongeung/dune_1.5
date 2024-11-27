@@ -225,8 +225,6 @@ void add_system_message(const char* message, int type) {
     display_system_message();
 }
 
-
-
 // 상태창: 선택된 유닛 또는 건물의 정보를 표시
 void display_object_info(char symbol, CURSOR cursor) {
     gotoxy((POSITION) { object_info_pos.row - 1, object_info_pos.column });

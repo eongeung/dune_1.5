@@ -46,7 +46,8 @@ void generate_spice_at_position(int row, int col);
 void process_unit_commands(UNIT* unit, char command);
 void produce_unit(char unit_type, POSITION base_pos);
 void add_system_message(const char* message, int type);
-
+void build_plate(POSITION pos);
+void build_building(POSITION pos, char building_type);
 void display(
 	RESOURCE resource,
 	char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH],

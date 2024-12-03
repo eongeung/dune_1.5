@@ -1,14 +1,4 @@
-﻿/* 진행사항 : 1) ~ 5) 완료,7).8) 부분 완료 
-* 
-* 문제 애매한 사항 : spice 할 때, 주황색이 지원되지 않아 노랑색에 글씨 색깔을 바꿨습니다.
-*                    아직 하코넨 진영을 진행하지 않아, 유닛을 생산할 때 상단바에서 차감되는 현상이 발생합니다.
-* 추가 기능 : intro, outro UI 추가, 시스템메세지 심각성별 색깔 추가
-* 
-* 특이사항 : 시작화면일 때 꼭! 꼭! 꼭! 전체 화면으로 크기를 키워주세요
-             글씨가 길어서 전체 화면 안하면 맵이 깨지는 현상이 발생합니다..
-  ++ 너무 빠르게 조작할 경우 버그가 발생할 수 있으니 마음에 여유를 가지고 작동 시켜주시면 감사하겠습니다
-    */
-
+﻿
 #include <stdlib.h>
 #include <time.h>
 #include "common.h"
@@ -27,11 +17,11 @@ void produce_unit(char unit_type, POSITION base_pos);
 void handle_cancel(void);
 void build_plate(POSITION pos);
 void build_building(POSITION pos, char building_type);
-void handle_spacebar(CURSOR cursor);
-void wait_for_user_input(CURSOR cursor);
+//void handle_spacebar(CURSOR cursor);
+//void wait_for_user_input(CURSOR cursor);
+void place_building(char building_type, POSITION pos);
+void process_building_commands(char building_type, char command);
 void handle_build_command(CURSOR cursor);
-void build_plate(POSITION pos);
-void display_command_prompt(const char* command);
 
 
 extern void generate_spice_at_position(int row, int col);
@@ -74,7 +64,8 @@ BUILDING buildings[] = {
     {'S', "Shelter", "특수유닛 생산", 5, 30, "프레멘 생산(F: Fremen)"},
     {'A', "Arena", "투사 생산", 3, 15, "투사 생산(F: Fighter)"},
     {'F', "Factory", "특수유닛 생산", 5, 30, "중전차 생산(T: heavy Tank)"},
-    {'R', "Rock", "건물을 지을 수 없음", 0, 0, "X"}
+    {'R', "Rock", "건물을 지을 수 없음", 0, 0, "X"},
+    {' ', "Empty Space", "빈 공간", 0, 0, "P: Plate 설치"}
 };
 
 UNIT units[] = {
@@ -221,6 +212,165 @@ POSITION find_nearby_empty_position(POSITION base_pos) {
     }
     return (POSITION) { -1, -1 };  // 빈 공간을 찾지 못하면 -1 반환
 }
+
+void place_building(char building_type, POSITION pos) {
+    int required_spice = -1;
+
+    // 설치하려는 빌딩 정보를 찾음
+    for (int i = 0; i < BUILDING_COUNT; i++) {
+        if (buildings[i].symbol == building_type) {
+            required_spice = buildings[i].cost;
+            break;
+        }
+    }
+
+    // 자원 확인
+    if (resource.spice < required_spice) {
+        add_system_message("스파이스가 부족하여 건물을 설치할 수 없습니다", 2);
+        return;
+    }
+
+    // 인구 증가 처리 (하드코딩된 방식으로 유닛의 population을 참조)
+    if (building_type == 'D') { // Dormitory 예시 (인구 최대치 증가)
+        resource.population_max += 10; // 예시로 10만큼 증가
+        add_system_message("인구 최대치가 증가했습니다", 3);
+    }
+
+    // 건물 설치
+    map[0][pos.row][pos.column] = building_type; // 해당 위치에 건물 설치
+    resource.spice -= required_spice;  // 자원 차감
+
+    add_system_message("건물이 설치되었습니다", 3);
+}
+
+
+void process_building_commands(char building_type, char command) {
+    switch (building_type) {
+    case 'D':  // Dormitory
+        if (command == 'I') {
+            add_system_message("Dormitory 상태를 점검합니다.", 0);
+            // TODO: Dormitory 관련 로직 추가
+        }
+        break;
+
+    case 'G':  // Garage
+        if (command == 'I') {
+            add_system_message("Garage 상태를 점검합니다.", 0);
+            // TODO: Garage 관련 로직 추가
+        }
+        break;
+
+    case 'B':  // Barracks
+        if (command == 'S') {
+            add_system_message("Barracks에서 보병을 생산합니다.", 3);
+            produce_unit('S', cursor.current);  // 보병 생산
+        }
+        break;
+
+    case 'S':  // Shelter
+        if (command == 'F') {
+            add_system_message("Shelter에서 프레멘을 생산합니다.", 3);
+            produce_unit('F', cursor.current);  // 프레멘 생산
+        }
+        break;
+
+    default:
+        add_system_message("이 빌딩은 명령을 처리할 수 없습니다.", 1);
+        break;
+    }
+}
+
+void handle_build_command(CURSOR cursor) {
+    // 명령창에 설치 가능한 빌딩 목록 표시
+    display_commands(' ', ' ');  // 빈 공간일 때 명령어 표시
+
+    // 사용자 입력 대기
+    char input = getchar();
+    printf("입력된 키: %c\n", input);  // 디버깅 메시지
+
+    switch (input) {
+    case 'P':  // Plate 설치
+        printf("P 키 눌림: Plate 설치 시작\n");  // 디버깅 메시지
+        if (map[0][cursor.current.row][cursor.current.column] == ' ' && resource.spice >= 1) {
+            build_plate(cursor.current);  // Plate 설치 호출
+        }
+        else {
+            add_system_message("Plate 설치 불가능 (스파이스 부족 또는 빈 공간 아님)", 1);
+        }
+        break;
+
+    case 'D':  // Dormitory 설치
+    case 'G':  // Garage 설치
+    case 'B':  // Barracks 설치
+    case 'S':  // Shelter 설치
+        place_building(input, cursor.current);
+        break;
+
+    default:
+        add_system_message("잘못된 명령어입니다.", 1);
+        break;
+    }
+}
+
+void build_plate(POSITION pos) {
+    // 디버깅 메시지
+    printf("map[0][%d][%d]: %c, resource.spice: %d\n", pos.row, pos.column, map[0][pos.row][pos.column], resource.spice);
+
+    // Plate 설치 가능 여부 확인
+    if (map[0][pos.row][pos.column] == ' ' && resource.spice >= 1) {
+        map[0][pos.row][pos.column] = 'P';  // Plate 설치
+        resource.spice -= 1;  // 스파이스 차감
+        add_system_message("Plate가 설치되었습니다.", 3);
+    }
+    else {
+        add_system_message("Plate 설치 불가능 (스파이스 부족 또는 빈 공간 아님)", 1);
+    }
+}
+
+
+
+void build_building(char building_type, POSITION pos) {
+    int required_spice = -1;
+
+    // 설치하려는 건물의 정보를 찾음
+    for (int i = 0; i < BUILDING_COUNT; i++) {
+        if (buildings[i].symbol == building_type) {
+            required_spice = buildings[i].cost;  // 건물 건설에 필요한 스파이스
+            break;
+        }
+    }
+
+    if (required_spice == -1) {
+        add_system_message("잘못된 건물 유형입니다", 1);
+        return;
+    }
+
+    // 스파이스가 부족한지 확인
+    if (resource.spice < required_spice) {
+        add_system_message("스파이스가 부족하여 건물을 설치할 수 없습니다", 2);
+        return;
+    }
+
+    // 빈 공간인지 확인
+    if (map[0][pos.row][pos.column] != ' ') {
+        add_system_message("이 위치는 이미 사용 중입니다", 2);
+        return;
+    }
+
+    // 건물 설치
+    map[0][pos.row][pos.column] = building_type;  // 건물 심볼로 설치
+    resource.spice -= required_spice;  // 스파이스 차감
+
+    // 건물에 대한 메시지 출력
+    for (int i = 0; i < BUILDING_COUNT; i++) {
+        if (buildings[i].symbol == building_type) {
+            add_system_message("%s가 설치되었습니다", 3);
+            return;
+        }
+    }
+}
+
+
 
 // 기존 produce_unit 함수에서 빈 위치 찾기 부분 수정
 void produce_unit(char unit_type, POSITION base_pos) {
@@ -522,88 +672,6 @@ void handle_selection(KEY key) {
 void handle_cancel() {
     selection_active = 0;  // 선택 상태 비활성화
     clear_line(object_info_pos, 80,6);  // 상태창 지우기
-}
-
-/* Plate(장판)를 설치하는 함수 */
-void build_plate(POSITION pos) {
-    if (map[0][pos.row][pos.column] == ' ' && resource.spice >= 1) { // 빈 공간 및 비용 확인
-        resource.spice -= 1; // 비용 차감
-        map[0][pos.row][pos.column] = 'P'; // Plate 설치
-        add_system_message("Plate 설치 완료", 3);
-    }
-    else {
-        add_system_message("Plate 설치 불가능 (스파이스 부족 또는 빈 공간 아님)", 1);
-    }
-}
-
-/* 특정 Plate 위에 건물을 설치하는 함수 */
-void build_building(POSITION pos, char building_type) {
-    // Plate가 아닌 위치에 건물을 설치하려고 하면 오류 메시지 출력
-    if (map[0][pos.row][pos.column] != 'P') {
-        add_system_message("Plate 위에서만 건물 설치 가능", 1);
-        return;
-    }
-
-    // 선택된 건물 유형에 따라 설치 및 자원 차감
-    for (int i = 0; i < BUILDING_COUNT; i++) {
-        if (buildings[i].symbol == building_type && resource.spice >= buildings[i].cost) {
-            resource.spice -= buildings[i].cost; // 비용 차감
-            resource.population_max += 10; // 예시로 고정된 값 추가
-
-            map[0][pos.row][pos.column] = building_type; // 해당 위치에 건물 설치
-            add_system_message("건물이 성공적으로 설치되었습니다", 3);
-            return;
-        }
-    }
-
-    // 잘못된 건물 유형이거나 자원이 부족할 경우
-    add_system_message("건물 설치 실패 (잘못된 유형 또는 자원 부족)", 1);
-}
-
-void handle_spacebar(CURSOR cursor) {
-    // 현재 선택된 위치가 빈 공간일 때만 처리
-    if (map[0][cursor.current.row][cursor.current.column] == ' ') {
-        // 명령창에 Build 명령어 표시
-        display_command_prompt("B: Build");
-
-        // 스페이스바를 누른 후, 사용자가 선택한 명령어를 기다립니다.
-        wait_for_user_input(cursor);
-    }
-    else {
-        // 빈 공간이 아니면 "이 위치는 건물 설치 불가" 등의 메시지 출력
-        add_system_message("이 위치는 건물 설치 불가", 1);
-    }
-}
-void wait_for_user_input(CURSOR cursor) {
-    char input = getchar();  // 사용자 입력 대기
-
-    switch (input) {
-    case 'B':  // B가 입력되면 Build 메뉴가 표시됨
-        handle_build_command(cursor);
-        break;
-    default:
-        add_system_message("잘못된 명령어입니다.", 1);
-        break;
-    }
-}
-void handle_build_command(CURSOR cursor) {
-    // 명령창에 Plate 설치 옵션 표시
-    display_command_prompt("P: Plate 설치");
-
-    // `P` 키가 눌리면 Plate 설치 처리
-    char input = getchar();
-    if (input == 'P') {
-        // Plate가 이미 설치되어 있지 않은 빈 공간에서만 설치 가능
-        if (map[0][cursor.current.row][cursor.current.column] == ' ' && resource.spice >= 1) {
-            build_plate(cursor.current);
-        }
-        else {
-            add_system_message("Plate 설치 불가능 (스파이스 부족 또는 빈 공간 아님)", 1);
-        }
-    }
-    else {
-        add_system_message("잘못된 명령어입니다.", 1);
-    }
 }
 
 

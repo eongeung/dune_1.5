@@ -27,6 +27,12 @@ void produce_unit(char unit_type, POSITION base_pos);
 void handle_cancel(void);
 void build_plate(POSITION pos);
 void build_building(POSITION pos, char building_type);
+void handle_spacebar(CURSOR cursor);
+void wait_for_user_input(CURSOR cursor);
+void handle_build_command(CURSOR cursor);
+void build_plate(POSITION pos);
+void display_command_prompt(const char* command);
+
 
 extern void generate_spice_at_position(int row, int col);
 bool is_position_empty(int row, int col);
@@ -553,6 +559,53 @@ void build_building(POSITION pos, char building_type) {
     // 잘못된 건물 유형이거나 자원이 부족할 경우
     add_system_message("건물 설치 실패 (잘못된 유형 또는 자원 부족)", 1);
 }
+
+void handle_spacebar(CURSOR cursor) {
+    // 현재 선택된 위치가 빈 공간일 때만 처리
+    if (map[0][cursor.current.row][cursor.current.column] == ' ') {
+        // 명령창에 Build 명령어 표시
+        display_command_prompt("B: Build");
+
+        // 스페이스바를 누른 후, 사용자가 선택한 명령어를 기다립니다.
+        wait_for_user_input(cursor);
+    }
+    else {
+        // 빈 공간이 아니면 "이 위치는 건물 설치 불가" 등의 메시지 출력
+        add_system_message("이 위치는 건물 설치 불가", 1);
+    }
+}
+void wait_for_user_input(CURSOR cursor) {
+    char input = getchar();  // 사용자 입력 대기
+
+    switch (input) {
+    case 'B':  // B가 입력되면 Build 메뉴가 표시됨
+        handle_build_command(cursor);
+        break;
+    default:
+        add_system_message("잘못된 명령어입니다.", 1);
+        break;
+    }
+}
+void handle_build_command(CURSOR cursor) {
+    // 명령창에 Plate 설치 옵션 표시
+    display_command_prompt("P: Plate 설치");
+
+    // `P` 키가 눌리면 Plate 설치 처리
+    char input = getchar();
+    if (input == 'P') {
+        // Plate가 이미 설치되어 있지 않은 빈 공간에서만 설치 가능
+        if (map[0][cursor.current.row][cursor.current.column] == ' ' && resource.spice >= 1) {
+            build_plate(cursor.current);
+        }
+        else {
+            add_system_message("Plate 설치 불가능 (스파이스 부족 또는 빈 공간 아님)", 1);
+        }
+    }
+    else {
+        add_system_message("잘못된 명령어입니다.", 1);
+    }
+}
+
 
 /* ================= worm 이동 =================== */
 void update_worm_position(OBJECT_SAND* worm) {

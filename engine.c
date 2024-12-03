@@ -554,21 +554,6 @@ void build_building(POSITION pos, char building_type) {
     add_system_message("건물 설치 실패 (잘못된 유형 또는 자원 부족)", 1);
 }
 
-/* 선택된 위치의 Plate 또는 건물 정보를 출력 */
-void display_object_info(char symbol, CURSOR cursor) {
-    for (int i = 0; i < BUILDING_COUNT; i++) {
-        if (buildings[i].symbol == symbol) {
-            gotoxy(object_info_pos);
-            printf("<건물 정보> 이름: %s, 비용: %d, 설명: %s",
-                buildings[i].name, buildings[i].cost, buildings[i].description);
-            return;
-        }
-    }
-
-    // 선택된 위치가 빈 공간일 경우 기본 메시지 출력
-    printf("여기는 건물이 없습니다.");
-}
-
 /* ================= worm 이동 =================== */
 void update_worm_position(OBJECT_SAND* worm) {
     if (sys_clock < worm->next_move_time) return;

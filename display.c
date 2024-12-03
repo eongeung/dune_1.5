@@ -227,12 +227,14 @@ void add_system_message(const char* message, int type) {
 
 // 상태창: 선택된 유닛 또는 건물의 정보를 표시
 void display_object_info(char symbol, CURSOR cursor) {
+    // 상태창 헤더 출력
     gotoxy((POSITION) { object_info_pos.row - 1, object_info_pos.column });
     printf("┌────────────────────────────────── 상태창 ──────────────────────────────────┐");
 
     clear_line(object_info_pos, 80, 6);  // 상태창 초기화
-    
+
     char unitSymbol = map[1][cursor.current.row][cursor.current.column];
+    char terrainSymbol = map[0][cursor.current.row][cursor.current.column];  // 지형 정보 확인
 
     // 유닛 정보 표시
     for (int i = 0; i < UNIT_COUNT; i++) {
@@ -242,7 +244,7 @@ void display_object_info(char symbol, CURSOR cursor) {
 
             gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column });
             printf("      공격력: %d, 이동 주기: %d", units[i].attack_damage, units[i].move_period);
-            return;  
+            return;
         }
     }
 
@@ -250,18 +252,29 @@ void display_object_info(char symbol, CURSOR cursor) {
     for (int i = 0; i < BUILDING_COUNT; i++) {
         if (buildings[i].symbol == symbol) {
             gotoxy(object_info_pos);
-            printf("      < 건물 > 이름: %s, 비용: %d", buildings[i].name, buildings[i].cost);
-
-            gotoxy((POSITION) { object_info_pos.row + 1, object_info_pos.column });
-            printf("      설명: %s\n", buildings[i].description);
+            printf("< 건물 정보 > 이름: %s, 비용: %d, 설명: %s\n",
+                buildings[i].name, buildings[i].cost, buildings[i].description);
             return;
         }
     }
 
-    // 유닛이나 건물이 없을 경우 기본 메시지
+    // 지형 정보에 따른 처리
+    if (terrainSymbol == 'P') {  // Plate가 깔려있으면
+        gotoxy(object_info_pos);
+        printf("      <건물 지을 수 있음> Plate가 깔려 있습니다.\n");
+        return;
+    }
+    else if (terrainSymbol == 'R') {  // Rock이면 건물을 지을 수 없음
+        gotoxy(object_info_pos);
+        printf("      <건물 지을 수 없음> 이곳은 Rock 지형으로 건물을 지을 수 없습니다.\n");
+        return;
+    }
+
+    // Plate도 없고, Rock도 아니면 Plate를 설치하라는 메시지
     gotoxy(object_info_pos);
-    printf("      개발되지 않은 사막 지역으로, 건물 짓기 전, Plate 우선 설치해주십시오.\n");
+    printf("      <건물 지을 수 없음> Plate를 우선 설치해주십시오.\n");
 }
+
 
 // 명령창: 선택된 유닛 또는 건물의 명령어 표시
 void display_commands(char symbol, char unitSymbol) {

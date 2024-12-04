@@ -35,6 +35,10 @@ KEY get_key(void) {
 		return k_quit;  // 'q'를 누르면 종료
 	case 'h':
 		return k_h;
+	case 'p':
+		return k_p;
+	case 'b':
+		return k_b;
 	case SPACE_KEY:  // 스페이스바
 		return k_space;
 	case ESC_KEY:  // ESC

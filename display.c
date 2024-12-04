@@ -58,7 +58,7 @@ void set_object_color(char object, int row, int col) {
         }
     }
     else if (object == 'P') {
-        set_color(COLOR_BLACK_ON_WHITE); // 장판(Plate)은 흰색 배경에 검은 글자
+        set_color(COLOR_WHITE_ON_BLACK); // 장판(Plate)은 흰색 배경에 검은 글자
     }
     else if (object == 'R') {
         set_color(COLOR_WHITE_ON_GRAY); // 바위(Rock)은 흰 글자, 회색 배경
@@ -286,7 +286,7 @@ void display_commands(char symbol, char unitSymbol) {
     for (int i = 0; i < UNIT_COUNT; i++) {
         if (units[i].symbol == unitSymbol) {
             gotoxy(commands_pos);
-            printf("     명령어: %s\n", units[i].command);
+            printf("  명령어: %s\n", units[i].command);
             return;
         }
     }
@@ -295,7 +295,7 @@ void display_commands(char symbol, char unitSymbol) {
     for (int i = 0; i < BUILDING_COUNT; i++) {
         if (buildings[i].symbol == symbol) {
             gotoxy(commands_pos);
-            printf("     명령어: %s\n", buildings[i].command);
+            printf("  명령어: %s\n", buildings[i].command);
             return;
         }
     }

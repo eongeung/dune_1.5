@@ -15,8 +15,8 @@ void choose_alternative_direction(OBJECT_SAND* worm, POSITION* next_pos);
 void handle_selection(KEY key);
 void produce_unit(char unit_type, POSITION base_pos);
 void handle_cancel(void);
-void build_plate(POSITION pos);
-void build_building(POSITION pos, char building_type);
+void build_plate(char unit_type, POSITION base_pos);
+void build_building(char building_type, POSITION pos);
 //void handle_spacebar(CURSOR cursor);
 //void wait_for_user_input(CURSOR cursor);
 void place_building(char building_type, POSITION pos);
@@ -49,6 +49,8 @@ int last_arrow_time = 0;
 int selection_active = 0;
 int first_spice = 1; // 첫 스파이스 양 설정을 위한 플래그
 int base_selected;
+int emptyspace_selected;
+int plate_selected;
 
 /* ================= game data =================== */
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH] = { 0 };
@@ -57,10 +59,10 @@ OBJECT_SAND worm2 = { {12, 42}, {MAP_HEIGHT - 3, MAP_WIDTH - 3}, 'W', 300, 300 }
 
 BUILDING buildings[] = {
     {'B', "Base", "없음", 50, 0, "H: 하베스터 생산"},
-    {'P', "Plate", "건물 부지", 1, 0, "없음"},
+    {'P', "Plate", "건물 부지", 1, 0, "B:Build"},
     {'D', "Dormitory", "인구 최대치 증가(10)", 2, 10, "없음"},
     {'G', "Garage", "스파이스 보관 최대치 증가(10)", 4, 10, "없음"},
-    {'B', "Barracks", "보병 생산", 4, 20, "보병 생산(S: Soldier)"},
+    {'M', "Barracks", "보병 생산", 4, 20, "보병 생산(S: Soldier)"},
     {'S', "Shelter", "특수유닛 생산", 5, 30, "프레멘 생산(F: Fremen)"},
     {'A', "Arena", "투사 생산", 3, 15, "투사 생산(F: Fighter)"},
     {'F', "Factory", "특수유닛 생산", 5, 30, "중전차 생산(T: heavy Tank)"},
@@ -121,6 +123,7 @@ int main(void) {
             }
         }
         else if (key == k_space) {  // 스페이스 키로 Base 선택 처리
+            clear_line(commands_pos, 80, 10);
             handle_selection(key);
             display(resource, map, cursor);
 
@@ -129,15 +132,22 @@ int main(void) {
             handle_cancel();  // ESC 키로 선택 취소
             display(resource, map, cursor);
         }
-        else if (key == 'B') {  // Plate 설치
-            build_plate(cursor.current);
+        else if (key == k_p && emptyspace_selected) {  // Plate 설치
+            clear_line(commands_pos, 80, 10);
+            build_plate('P',cursor.current);
             display(resource, map, cursor);
         }
-        else if (key == 'b') { // 건물 건설
-            char building_type = 'D'; //dormitory로 일단 설정
-            build_building(cursor.current, building_type); // 기본값 사용
-            display(resource, map, cursor);
+        else if (key == k_b && map[0][cursor.current.row][cursor.current.column] == 'P') {  // Plate 위에서 B 입력
+            clear_line(commands_pos, 80, 10);
+            for (int i = 0; i < BUILDING_COUNT; i++) {
+                if (buildings[i].symbol == 'D' || buildings[i].symbol == 'G' || buildings[i].symbol == 'M' || buildings[i].symbol == 'S') {
+                    // D, G, B, S 건물인 경우 SYMBOL, NAME, DESCRIPTION 출력
+                    gotoxy((POSITION) { commands_pos.row + i, commands_pos.column });
+                    printf("  [%c] %s: %s\n", buildings[i].symbol, buildings[i].name, buildings[i].description);
+                }
+            }
         }
+
         else if (key == k_quit) {
             outro();
             display(resource, map, cursor);
@@ -260,7 +270,7 @@ void process_building_commands(char building_type, char command) {
         }
         break;
 
-    case 'B':  // Barracks
+    case 'M':  // Barracks
         if (command == 'S') {
             add_system_message("Barracks에서 보병을 생산합니다.", 3);
             produce_unit('S', cursor.current);  // 보병 생산
@@ -280,42 +290,7 @@ void process_building_commands(char building_type, char command) {
     }
 }
 
-void handle_build_command(CURSOR cursor) {
-    // 명령창에 설치 가능한 빌딩 목록 표시
-    display_commands(' ', ' ');  // 빈 공간일 때 명령어 표시
-
-    // 사용자 입력 대기
-    char input = getchar();
-    printf("입력된 키: %c\n", input);  // 디버깅 메시지
-
-    switch (input) {
-    case 'P':  // Plate 설치
-        printf("P 키 눌림: Plate 설치 시작\n");  // 디버깅 메시지
-        if (map[0][cursor.current.row][cursor.current.column] == ' ' && resource.spice >= 1) {
-            build_plate(cursor.current);  // Plate 설치 호출
-        }
-        else {
-            add_system_message("Plate 설치 불가능 (스파이스 부족 또는 빈 공간 아님)", 1);
-        }
-        break;
-
-    case 'D':  // Dormitory 설치
-    case 'G':  // Garage 설치
-    case 'B':  // Barracks 설치
-    case 'S':  // Shelter 설치
-        place_building(input, cursor.current);
-        break;
-
-    default:
-        add_system_message("잘못된 명령어입니다.", 1);
-        break;
-    }
-}
-
-void build_plate(POSITION pos) {
-    // 디버깅 메시지
-    printf("map[0][%d][%d]: %c, resource.spice: %d\n", pos.row, pos.column, map[0][pos.row][pos.column], resource.spice);
-
+void build_plate(char unit_type, POSITION pos) {
     // Plate 설치 가능 여부 확인
     if (map[0][pos.row][pos.column] == ' ' && resource.spice >= 1) {
         map[0][pos.row][pos.column] = 'P';  // Plate 설치
@@ -326,6 +301,7 @@ void build_plate(POSITION pos) {
         add_system_message("Plate 설치 불가능 (스파이스 부족 또는 빈 공간 아님)", 1);
     }
 }
+
 
 
 
@@ -663,6 +639,13 @@ void handle_selection(KEY key) {
         }
     }
 
+    emptyspace_selected = 0; // 기본값으로 0 설정
+    for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
+        if (buildings[i].symbol == symbol && strcmp(buildings[i].name, "Empty Space") == 0) {
+            emptyspace_selected = 1; // Empty Space가 선택되었음을 표시
+            break;
+        }
+    }
 
     // 선택된 객체 정보를 각 창에 전달만 함
     display_object_info(symbol, cursor);   // 상태창에 정보 전달

@@ -44,7 +44,7 @@ typedef struct {
 // KEY : 입력 키 정의
 typedef enum {
 	// k_none: 입력된 키가 없음. d_stay(안 움직이는 경우)에 대응
-	k_none = 0, k_up, k_right, k_left, k_down,k_h,
+	k_none = 0, k_up, k_right, k_left, k_down,k_h,k_p,k_b,
 	k_quit, k_space = SPACE_KEY, k_esc = ESC_KEY,
 	k_undef, // 정의되지 않은 키 입력	
 } KEY;
@@ -130,6 +130,8 @@ typedef struct {
 	const char* command;    // 명령어
 	POSITION pos;           //유닛 위치
 } UNIT;
+
+
 
 typedef struct {
 	POSITION positions[4];  // 베이스의 4개 칸의 좌표

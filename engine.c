@@ -17,12 +17,9 @@ void produce_unit(char unit_type, POSITION base_pos);
 void handle_cancel(void);
 void build_plate(char unit_type, POSITION base_pos);
 void build_building(char building_type, POSITION pos);
-//void handle_spacebar(CURSOR cursor);
-//void wait_for_user_input(CURSOR cursor);
 void place_building(char building_type, POSITION pos);
-void process_building_commands(char building_type, char command);
-void handle_build_command(CURSOR cursor);
-void handle_move_harvester(UNIT* unit);
+void handle_move_harvester(UNIT* unit, KEY key);
+void handle_move(UNIT* unit, KEY key);
 
 
 extern void generate_spice_at_position(int row, int col);
@@ -34,6 +31,7 @@ POSITION get_next_position(OBJECT_SAND* obj);
 BUILDING* get_selected_building(POSITION pos);
 bool is_building_mode = false;  // 건물 설치 모드 상태
 bool is_unit_select_mode = false;  // 유닛 선택 모드
+UNIT* selected_unit = NULL;  // 선택된 유닛
 
 // 전역 변수로 베이스 그룹 초기화
 BASE_GROUP base_groups[] = {
@@ -120,23 +118,14 @@ int main(void) {
             produce_unit('H', cursor.current);  // 현재 커서 위치 (Base 위치)에서 유닛 생산
             display(resource, map, cursor);
         }
-        // 유닛 선택 모드 키 처리
-        if (is_unit_select_mode) {
-            if (key == 'M') {  // 이동(M) 명령
-                add_system_message("유닛이 이동을 시작합니다.", 0);
-                // handle_move_unit(selected_unit);  // 유닛 이동 함수 호출 (즉시 이동)
-                is_unit_select_mode = false;  // 이동 후 유닛 선택 모드 종료
-            }
-            else if (key == 'P') {  // 순찰(P) 명령
-                add_system_message("유닛이 순찰을 시작합니다.", 0);
-                // handle_patrol_unit(selected_unit);  // 유닛 순찰 함수 호출
-                is_unit_select_mode = false;  // 순찰 후 유닛 선택 모드 종료
-            }
-            else if (key == k_space) {  // 스페이스로 유닛 선택
-                add_system_message("유닛 선택을 취소합니다.", 0);
-                is_unit_select_mode = false;  // 유닛 선택 모드 종료
-            }
+        else if(is_unit_select_mode && key ==k_h) {
+            handle_move_harvester(selected_unit, key);  // 이동 명령 및 목표 지점 확정 처리
         }
+        else if (is_unit_select_mode && key == k_m) {
+            handle_move(selected_unit, key);  // 이동 명령 및 목표 지점 확정 처리
+        }
+
+
         else if (key == k_space) {  // 스페이스 키로 Base 선택 처리
             clear_line(commands_pos, 80, 10);
             handle_selection(key);
@@ -167,10 +156,14 @@ int main(void) {
         if (is_building_mode) {
             if (key == k_d) {
                 place_building('D', cursor.current);  // D 건물 설치
+                resource.population_max += 10;  // D 건물 설치 시 population.max 10 증가
+                add_system_message("인구 최대치가 10 증가했습니다.", 0);
                 is_building_mode = false;  // 건물 설치 후 모드 종료
             }
             else if (key == k_g) {
                 place_building('G', cursor.current);  // G 건물 설치
+                resource.spice_max += 10;  // G 건물 설치 시 spice.max 10 증가
+                add_system_message("스파이스 최대치가 10 증가했습니다.", 0);
                 is_building_mode = false;  // 건물 설치 후 모드 종료
             }
             else if (key == k_m) {
@@ -428,99 +421,118 @@ void produce_unit(char unit_type, POSITION base_pos) {
         add_system_message("인구 한도에 도달했습니다", 2);
     }
 }
-
-// 유닛 명령어 처리
-void process_unit_commands(UNIT* unit, char key) {
-    switch (unit->symbol) {
-    case 'H':  // 하베스터
-        if (key == 'H') {
-            add_system_message("하베스터가 스파이스 채취를 시작합니다", 3);
-            // TODO: 스파이스 채취 로직 추가
-        }
-        else if (key == 'M') {  // 하베스터 이동 명령
-            add_system_message("하베스터가 이동을 시작합니다.", 0);
-            handle_move_harvester(unit);  // 하베스터 이동 함수 호출 (즉시 이동)
-        }
-        else if (key == ' ' && is_harvester_waiting_for_move) {  // 스페이스바로 이동 수행
-            add_system_message("이동이 완료되었습니다.", 0);
-            is_harvester_waiting_for_move = false;  // 이동 완료 후 대기 상태 해제
-        }
-        else {
-            add_system_message("잘못된 명령어입니다", 1);
-        }
-        break;
-    case 'F':  // 프레멘
-        if (key == 'P') {
-            add_system_message("프레멘이 순찰을 시작합니다", 3);
-            // TODO: 순찰 로직 추가
-        }
-        else if (key == 'M') {
-            add_system_message("프레멘이 이동 중입니다", 0);
-            // TODO: 이동 로직 추가
-        }
-        else {
-            add_system_message("잘못된 명령어입니다", 1);
-        }
-        break;
-
-    default:
-        add_system_message("이 유닛은 명령을 처리할 수 없습니다", 1);
-        break;
-    }
-}
-
-void move_harvester(int unit_symbol, POSITION destination) {
-    // 현재 유닛 위치 찾기
-    POSITION current_pos = { -1, -1 };
+POSITION find_unit_position(char symbol) {
+    POSITION pos = { -1, -1 }; // 유닛이 없을 경우 기본값
 
     for (int row = 0; row < MAP_HEIGHT; row++) {
         for (int col = 0; col < MAP_WIDTH; col++) {
-            if (map[1][row][col] == unit_symbol) {
-                current_pos.row = row;
-                current_pos.column = col;
-                break;
+            if (map[1][row][col] == symbol) {
+                pos.row = row;
+                pos.column = col;
+                return pos; // 유닛 위치를 찾으면 반환
             }
         }
-        if (current_pos.row != -1) break;  // 유닛 위치를 찾으면 중단
     }
 
-    if (current_pos.row == -1) {
-        add_system_message("하베스터 위치를 찾을 수 없습니다.", 1);
-        return;  // 유닛 위치가 없으면 함수 종료
-    }
-
-    // 이동 시작 메시지 출력
-    add_system_message("하베스터가 이동 중입니다...", 0);
-
-    // 이동 처리
-    Sleep(1000);  // 1초 대기 (이동 시간)
-
-    // 현재 위치에서 유닛 제거
-    map[1][current_pos.row][current_pos.column] = ' ';
-
-    // 새로운 위치에 유닛 배치
-    map[1][destination.row][destination.column] = unit_symbol;
-
-    // 이동 완료 메시지 출력
-    add_system_message("하베스터가 도착했습니다.", 3);
-
-    // 화면 갱신
-    display(resource, map, cursor);
+    return pos; // 유닛이 없으면 {-1, -1} 반환
 }
 
+void handle_move_harvester(UNIT* unit, KEY key) {
+    static bool waiting_for_target = false;  // 스파이스 매장지 대기 상태
+    static UNIT* active_unit = NULL;         // 이동 중인 유닛
+    static bool is_harvesting = false;       // 수확 중인지 여부
 
-void handle_move_harvester(int unit_symbol) {
-    POSITION destination = cursor.current;  // 커서 위치를 목표 지점으로 설정
-
-    // 목표 지점 확인
-    if (map[0][destination.row][destination.column] != ' ') {
-        add_system_message("목표 지점이 비어 있지 않습니다.", 1);
+    if (key == k_h && !waiting_for_target && !is_harvesting) {  // H 명령: 수확 시작
+        add_system_message("스파이스 매장지를 커서로 선택 후 스페이스바를 누르세요.", 0);
+        waiting_for_target = true;  // 목표 지점 대기 상태로 전환
+        active_unit = unit;         // 현재 하베스터 유닛 설정
         return;
     }
 
-    // 하베스터 이동
-    move_harvester(unit_symbol, destination);
+    if (waiting_for_target && active_unit == unit && key == k_space) {  // 목표 지점 확정
+        POSITION target_pos = cursor.current;  // 현재 커서 위치를 목표 지점으로 설정
+
+        // 목표 지점이 유효한 위치인지 확인 (숫자 1~9 사이로 스파이스 매장지 확인)
+        if (map[0][target_pos.row][target_pos.column] < '1' || map[0][target_pos.row][target_pos.column] > '9') {
+            add_system_message("잘못된 위치입니다. 스파이스 매장지를 선택하세요.", 1);
+            return;
+        }
+
+        // 수확 시간 설정 (3~5초)
+        is_harvesting = true;
+        add_system_message("스파이스를 수확하는 중...", 0);
+
+        // 맵에 표시된 스파이스 양을 수확량으로 설정
+        int harvested_spices = map[0][target_pos.row][target_pos.column] - '0';  // 숫자를 정수로 변환
+
+        // 자원 증가 또는 창고 초과 처리
+        if (resource.spice + harvested_spices <= resource.spice_max) {
+            resource.spice += harvested_spices;  // 자원 증가
+            map[0][target_pos.row][target_pos.column] = ' ';  // 수확 후 스파이스 매장지에서 스파이스 제거
+            add_system_message("스파이스를 본진에 배달했습니다.", 3);
+        }
+        else {
+            // 창고가 가득 차면 일부 스파이스가 버려짐
+            int discarded_spices = harvested_spices - (resource.spice_max - resource.spice);
+            resource.spice = resource.spice_max;  // 창고 수용량에 맞게 자원량 설정
+            map[0][target_pos.row][target_pos.column] = ' ';  // 수확 후 스파이스 매장지에서 스파이스 제거
+            add_system_message("창고가 가득 찼습니다. %d개의 스파이스는 버려졌습니다.", discarded_spices);
+        }
+
+        
+
+        // 본진으로 돌아가기
+        add_system_message("본진으로 돌아갑니다.", 0);
+        display(resource, map, cursor);  // 화면 갱신
+
+        // 상태 초기화
+        is_harvesting = false;  // 수확 중 상태 해제
+        waiting_for_target = false;  // 목표 지점 대기 상태 해제
+        active_unit = NULL;  // 이동 중인 유닛 초기화// 상태 초기화
+    }
 }
+void handle_move(UNIT* unit, KEY key) {
+    static bool waiting_for_target = false;  // 이동 목표 지점 대기 상태
+    static UNIT* active_unit = NULL;         // 이동 중인 유닛
+    static POSITION target_pos;              // 목표 위치
+
+    if (key == k_m && !waiting_for_target) {  // M 명령: 이동 시작
+        add_system_message("이동을 시작합니다. 목표 지점을 커서로 선택 후 스페이스바를 누르세요.", 0);
+        waiting_for_target = true;  // 목표 지점 대기 상태로 전환
+        active_unit = unit;         // 현재 이동 중인 유닛 설정
+        return;
+    }
+
+    if (waiting_for_target && active_unit == unit && key == k_space) {  // 목표 지점 확정
+        target_pos = cursor.current;  // 현재 커서 위치를 목표 지점으로 설정
+
+        // 목표 지점이 맵 내에 유효한 위치인지 확인 (경계 체크)
+        if (target_pos.row < 0 || target_pos.row >= MAP_HEIGHT || target_pos.column < 0 || target_pos.column >= MAP_WIDTH) {
+            add_system_message("목표 지점이 맵 경계를 벗어났습니다.", 1);
+            return;
+        }
+
+        // 이동 처리
+        add_system_message("목표 지점으로 이동 중...", 0);
+
+        // 이전 위치를 비우고 새로운 위치로 이동
+        map[0][unit->pos.row][unit->pos.column] = ' ';  // 이전 위치 비우기
+        unit->pos = target_pos;  // 유닛 위치 업데이트
+        map[0][unit->pos.row][unit->pos.column] = unit->symbol;  // 새로운 위치에 유닛 표시
+
+        // 이동 완료 메시지
+        add_system_message("유닛이 목표 지점으로 이동했습니다.", 3);
+
+        // 상태 초기화
+        waiting_for_target = false;
+        active_unit = NULL;
+
+        // 화면 갱신
+        display(resource, map, cursor);
+    }
+}
+
+
 
 
 
@@ -599,7 +611,7 @@ void handle_cancel() {
 
 void intro(void) {
     system("cls"); // 화면 초기화
-    /*Sleep(5000);
+    Sleep(5000);
     // 텍스트를 출력하기 위한 색상 배열
    int colors[] = {
         FOREGROUND_RED | FOREGROUND_INTENSITY,
@@ -645,7 +657,7 @@ void intro(void) {
 
     // 텍스트 색상 초기화
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-    system("cls"); // 화면 지우기*/
+    system("cls"); // 화면 지우기
     printf("게임이 곧 시작됩니다...\n");
     Sleep(2000); // 2초간 대기
     system("cls");
@@ -743,8 +755,8 @@ void init(void) {
 
 /* ================= worm 이동 =================== */
 void update_worm_position(OBJECT_SAND* worm) {
+    // 이동 속도 기반으로 이동 제한
     if (sys_clock < worm->next_move_time) return;
-
     // 가장 가까운 하베스터(H)를 찾아 이동할 위치 설정
     POSITION target_pos = find_nearest_harvester(worm);
 
@@ -799,7 +811,7 @@ void update_worm_position(OBJECT_SAND* worm) {
     worm->pos = next_pos; // worm의 위치 업데이트
     map[1][worm->pos.row][worm->pos.column] = worm->repr; // 새로운 위치에 worm 표시
 
-    worm->next_move_time = sys_clock + worm->speed; // 다음 이동 시간 설정
+    worm->next_move_time = sys_clock + worm->speed * 4;
 }
 
 /* 가장 가까운 하베스터(H) 위치를 찾는 함수 */

@@ -129,6 +129,7 @@ typedef struct {
 	int vision;             // 시야
 	const char* command;    // 명령어
 	POSITION pos;           //유닛 위치
+	RESOURCE resources;
 } UNIT;
 
 

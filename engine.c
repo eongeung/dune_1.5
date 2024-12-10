@@ -1,4 +1,4 @@
-﻿
+﻿#define _CRT_SECURE_NO_WARNINGS
 #include <stdlib.h>
 #include <time.h>
 #include "common.h"
@@ -22,6 +22,7 @@ void build_building(char building_type, POSITION pos);
 void place_building(char building_type, POSITION pos);
 void process_building_commands(char building_type, char command);
 void handle_build_command(CURSOR cursor);
+void handle_move_harvester(UNIT* unit);
 
 
 extern void generate_spice_at_position(int row, int col);
@@ -30,6 +31,9 @@ bool is_unit_command(KEY key);
 UNIT* get_selected_unit(POSITION pos);
 POSITION find_nearby_empty_position(POSITION base_pos);
 POSITION get_next_position(OBJECT_SAND* obj);
+BUILDING* get_selected_building(POSITION pos);
+bool is_building_mode = false;  // 건물 설치 모드 상태
+bool is_unit_select_mode = false;  // 유닛 선택 모드
 
 // 전역 변수로 베이스 그룹 초기화
 BASE_GROUP base_groups[] = {
@@ -116,10 +120,21 @@ int main(void) {
             produce_unit('H', cursor.current);  // 현재 커서 위치 (Base 위치)에서 유닛 생산
             display(resource, map, cursor);
         }
-        else if (is_unit_command(key)) {  // 유닛 명령어 입력
-            UNIT* selected_unit = get_selected_unit(cursor.current);  // 현재 선택된 유닛 가져오기
-            if (selected_unit != NULL) {
-                process_unit_commands(selected_unit, key);  // 유닛 명령어 처리
+        // 유닛 선택 모드 키 처리
+        if (is_unit_select_mode) {
+            if (key == 'M') {  // 이동(M) 명령
+                add_system_message("유닛이 이동을 시작합니다.", 0);
+                // handle_move_unit(selected_unit);  // 유닛 이동 함수 호출 (즉시 이동)
+                is_unit_select_mode = false;  // 이동 후 유닛 선택 모드 종료
+            }
+            else if (key == 'P') {  // 순찰(P) 명령
+                add_system_message("유닛이 순찰을 시작합니다.", 0);
+                // handle_patrol_unit(selected_unit);  // 유닛 순찰 함수 호출
+                is_unit_select_mode = false;  // 순찰 후 유닛 선택 모드 종료
+            }
+            else if (key == k_space) {  // 스페이스로 유닛 선택
+                add_system_message("유닛 선택을 취소합니다.", 0);
+                is_unit_select_mode = false;  // 유닛 선택 모드 종료
             }
         }
         else if (key == k_space) {  // 스페이스 키로 Base 선택 처리
@@ -134,7 +149,7 @@ int main(void) {
         }
         else if (key == k_p && emptyspace_selected) {  // Plate 설치
             clear_line(commands_pos, 80, 10);
-            build_plate('P',cursor.current);
+            build_plate('P', cursor.current);
             display(resource, map, cursor);
         }
         else if (key == k_b && map[0][cursor.current.row][cursor.current.column] == 'P') {  // Plate 위에서 B 입력
@@ -143,19 +158,38 @@ int main(void) {
                 if (buildings[i].symbol == 'D' || buildings[i].symbol == 'G' || buildings[i].symbol == 'M' || buildings[i].symbol == 'S') {
                     // D, G, B, S 건물인 경우 SYMBOL, NAME, DESCRIPTION 출력
                     gotoxy((POSITION) { commands_pos.row + i, commands_pos.column });
-                    printf("  [%c] %s: %s\n", buildings[i].symbol, buildings[i].name, buildings[i].description);
+                    printf("  명령어 : %c %s: %s\n", buildings[i].symbol, buildings[i].name, buildings[i].description);
                 }
             }
+            is_building_mode = true;
         }
-
+        // 건물 설치 키 처리 (B 이후에만 활성화)
+        if (is_building_mode) {
+            if (key == k_d) {
+                place_building('D', cursor.current);  // D 건물 설치
+                is_building_mode = false;  // 건물 설치 후 모드 종료
+            }
+            else if (key == k_g) {
+                place_building('G', cursor.current);  // G 건물 설치
+                is_building_mode = false;  // 건물 설치 후 모드 종료
+            }
+            else if (key == k_m) {
+                place_building('M', cursor.current);  // M 건물 설치
+                is_building_mode = false;  // 건물 설치 후 모드 종료
+            }
+            else if (key == k_s) {
+                place_building('S', cursor.current);  // S 건물 설치
+                is_building_mode = false;  // 건물 설치 후 모드 종료
+            }
+        }
         else if (key == k_quit) {
             outro();
             display(resource, map, cursor);
         }
 
         if (should_update_status) {
-            clear_line(object_info_pos, 80,6);  // 상태창 지우기
-            display_object_info(map[0][cursor.current.row][cursor.current.column],cursor); // 현재 위치의 정보 출력
+            clear_line(object_info_pos, 80, 6);  // 상태창 지우기
+            display_object_info(map[0][cursor.current.row][cursor.current.column], cursor); // 현재 위치의 정보 출력
             should_update_status = 0; // 플래그 초기화
         }
         // 자원 및 인구 상태 표시
@@ -166,12 +200,12 @@ int main(void) {
     }
 }
 
-/* ================= subfunctions =================== */ 
+/* ================= subfunctions =================== */
 
 bool is_position_empty(int row, int col) {
     // map[1]이 빈 공간이면 true로 간주 (map[0] 확인 생략)
     return (map[0][row][col] == ' ' || map[0][row][col] == -1) &&
-    (map[1][row][col] == ' ' || map[1][row][col] == -1);
+        (map[1][row][col] == ' ' || map[1][row][col] == -1);
 }
 
 bool is_unit_command(KEY key) {
@@ -185,6 +219,16 @@ UNIT* get_selected_unit(POSITION pos) {
         }
     }
     return NULL;  // 유닛이 없으면 NULL 반환
+}
+
+BUILDING* get_selected_building(POSITION pos) {
+    char buildingSymbol = map[0][pos.row][pos.column];  // 현재 위치의 건물 심볼 가져오기
+    for (int i = 0; i < BUILDING_COUNT; i++) {
+        if (buildings[i].symbol == buildingSymbol) {
+            return &buildings[i];  // 심볼이 일치하는 건물을 찾으면 해당 건물의 주소 반환
+        }
+    }
+    return NULL;  // 건물이 없으면 NULL 반환
 }
 
 // 베이스 그룹에서 빈 위치를 찾는 함수
@@ -222,74 +266,7 @@ POSITION find_nearby_empty_position(POSITION base_pos) {
     }
     return (POSITION) { -1, -1 };  // 빈 공간을 찾지 못하면 -1 반환
 }
-
-void place_building(char building_type, POSITION pos) {
-    int required_spice = -1;
-
-    // 설치하려는 빌딩 정보를 찾음
-    for (int i = 0; i < BUILDING_COUNT; i++) {
-        if (buildings[i].symbol == building_type) {
-            required_spice = buildings[i].cost;
-            break;
-        }
-    }
-
-    // 자원 확인
-    if (resource.spice < required_spice) {
-        add_system_message("스파이스가 부족하여 건물을 설치할 수 없습니다", 2);
-        return;
-    }
-
-    // 인구 증가 처리 (하드코딩된 방식으로 유닛의 population을 참조)
-    if (building_type == 'D') { // Dormitory 예시 (인구 최대치 증가)
-        resource.population_max += 10; // 예시로 10만큼 증가
-        add_system_message("인구 최대치가 증가했습니다", 3);
-    }
-
-    // 건물 설치
-    map[0][pos.row][pos.column] = building_type; // 해당 위치에 건물 설치
-    resource.spice -= required_spice;  // 자원 차감
-
-    add_system_message("건물이 설치되었습니다", 3);
-}
-
-
-void process_building_commands(char building_type, char command) {
-    switch (building_type) {
-    case 'D':  // Dormitory
-        if (command == 'I') {
-            add_system_message("Dormitory 상태를 점검합니다.", 0);
-            // TODO: Dormitory 관련 로직 추가
-        }
-        break;
-
-    case 'G':  // Garage
-        if (command == 'I') {
-            add_system_message("Garage 상태를 점검합니다.", 0);
-            // TODO: Garage 관련 로직 추가
-        }
-        break;
-
-    case 'M':  // Barracks
-        if (command == 'S') {
-            add_system_message("Barracks에서 보병을 생산합니다.", 3);
-            produce_unit('S', cursor.current);  // 보병 생산
-        }
-        break;
-
-    case 'S':  // Shelter
-        if (command == 'F') {
-            add_system_message("Shelter에서 프레멘을 생산합니다.", 3);
-            produce_unit('F', cursor.current);  // 프레멘 생산
-        }
-        break;
-
-    default:
-        add_system_message("이 빌딩은 명령을 처리할 수 없습니다.", 1);
-        break;
-    }
-}
-
+bool building_selection_mode = false;  // 건물 선택 모드 여부
 void build_plate(char unit_type, POSITION pos) {
     // Plate 설치 가능 여부 확인
     if (map[0][pos.row][pos.column] == ' ' && resource.spice >= 1) {
@@ -301,6 +278,50 @@ void build_plate(char unit_type, POSITION pos) {
         add_system_message("Plate 설치 불가능 (스파이스 부족 또는 빈 공간 아님)", 1);
     }
 }
+
+void place_building(char building_type, POSITION pos) {
+    int required_spice = -1;
+
+    // 설치하려는 빌딩 정보를 찾음
+    for (int i = 0; i < BUILDING_COUNT; i++) {
+        if (buildings[i].symbol == building_type) {
+            required_spice = buildings[i].cost;  // 해당 건물의 비용을 저장
+            break;
+        }
+    }
+    if (required_spice == -1) {
+        add_system_message("잘못된 건물 유형입니다", 1);
+        return;
+    }
+
+    // 자원 확인
+    if (resource.spice < required_spice) {
+        add_system_message("스파이스가 부족하여 건물을 설치할 수 없습니다", 2);
+        return;
+    }
+
+    // Plate 위에서만 설치되도록 수정
+    if (map[0][pos.row][pos.column] != 'P') {  // Plate 위에서만 설치 가능
+        add_system_message("Plate 위에서만 건물을 설치할 수 있습니다.", 2);
+        return;
+    }
+
+    // 이미 설치된 건물이 있는지 체크 (이 부분은 `Plate` 위에만 적용)
+    if (map[0][pos.row][pos.column] != 'P') {
+        add_system_message("이 위치에는 건물을 설치할 수 없습니다", 2);
+        return;
+    }
+
+    // 건물 설치
+    map[0][pos.row][pos.column] = building_type;  // 해당 위치에 건물 설치
+    resource.spice -= required_spice;  // 자원 차감
+
+    add_system_message("건물이 설치되었습니다. ", 3);
+
+    // 화면 갱신
+    display(resource, map, cursor);
+}
+
 
 
 
@@ -346,8 +367,7 @@ void build_building(char building_type, POSITION pos) {
     }
 }
 
-
-
+bool is_harvester_waiting_for_move = false;  // 하베스터가 이동 대기 상태인지 확인
 // 기존 produce_unit 함수에서 빈 위치 찾기 부분 수정
 void produce_unit(char unit_type, POSITION base_pos) {
     int required_spice = -1;
@@ -363,7 +383,7 @@ void produce_unit(char unit_type, POSITION base_pos) {
     }
 
     if (required_spice == -1) {
-        add_system_message("잘못된 유닛 유형입니다",1);
+        add_system_message("잘못된 유닛 유형입니다", 1);
         return;
     }
 
@@ -382,7 +402,7 @@ void produce_unit(char unit_type, POSITION base_pos) {
 
     // 커서가 BASE 위에 있을 때만 유닛 생성 가능
     if (!is_cursor_on_base) {
-        add_system_message("기지 위에 커서가 있어야 유닛을 생성할 수 있습니다",0);
+        add_system_message("기지 위에 커서가 있어야 유닛을 생성할 수 있습니다", 0);
         return;
     }
 
@@ -395,57 +415,186 @@ void produce_unit(char unit_type, POSITION base_pos) {
             resource.population += population_increase;     // population 값 증가
             map[1][spawn_pos.row][spawn_pos.column] = unit_type; // 빈 위치에 유닛 생성
 
-            // 색상을 설정할 때, 해당 위치의 색상을 가져와서 설정
-            //set_object_color(unit_type, spawn_pos.row, spawn_pos.column);
-            //set_color(COLOR_WHITE_ON_BLACK);  // 기본 색상으로 복원
-            add_system_message("기지 근처에 새로운 유닛이 준비되었습니다",3);
+            add_system_message("기지 근처에 새로운 유닛이 준비되었습니다", 3);
         }
         else {
-            add_system_message("기지 근처에 유닛을 생성할 빈 공간이 없습니다",2);
+            add_system_message("기지 근처에 유닛을 생성할 빈 공간이 없습니다", 2);
         }
     }
     else if (resource.spice < required_spice) {
-        add_system_message("스파이스가 부족합니다",2);
+        add_system_message("스파이스가 부족합니다", 2);
     }
     else {
-        add_system_message("인구 한도에 도달했습니다",2);
+        add_system_message("인구 한도에 도달했습니다", 2);
     }
 }
 
-void process_unit_commands(UNIT* unit, char command) {
+// 유닛 명령어 처리
+void process_unit_commands(UNIT* unit, char key) {
     switch (unit->symbol) {
     case 'H':  // 하베스터
-        if (command == 'H') {
-            add_system_message("하베스터가 스파이스 채취를 시작합니다",3);
+        if (key == 'H') {
+            add_system_message("하베스터가 스파이스 채취를 시작합니다", 3);
             // TODO: 스파이스 채취 로직 추가
         }
-        else if (command == 'M') {
-            add_system_message("하베스터가 이동 중입니다",0);
-            // TODO: 이동 로직 추가
+        else if (key == 'M') {  // 하베스터 이동 명령
+            add_system_message("하베스터가 이동을 시작합니다.", 0);
+            handle_move_harvester(unit);  // 하베스터 이동 함수 호출 (즉시 이동)
+        }
+        else if (key == ' ' && is_harvester_waiting_for_move) {  // 스페이스바로 이동 수행
+            add_system_message("이동이 완료되었습니다.", 0);
+            is_harvester_waiting_for_move = false;  // 이동 완료 후 대기 상태 해제
         }
         else {
-            add_system_message("잘못된 명령어입니다",1);
+            add_system_message("잘못된 명령어입니다", 1);
         }
         break;
-
     case 'F':  // 프레멘
-        if (command == 'P') {
-            add_system_message("프레멘이 순찰을 시작합니다",3);
+        if (key == 'P') {
+            add_system_message("프레멘이 순찰을 시작합니다", 3);
             // TODO: 순찰 로직 추가
         }
-        else if (command == 'M') {
-            add_system_message("프레멘이 이동 중입니다",0);
+        else if (key == 'M') {
+            add_system_message("프레멘이 이동 중입니다", 0);
             // TODO: 이동 로직 추가
         }
         else {
-            add_system_message("잘못된 명령어입니다",1);
+            add_system_message("잘못된 명령어입니다", 1);
         }
         break;
 
     default:
-        add_system_message("이 유닛은 명령을 처리할 수 없습니다",1);
+        add_system_message("이 유닛은 명령을 처리할 수 없습니다", 1);
         break;
     }
+}
+
+void move_harvester(int unit_symbol, POSITION destination) {
+    // 현재 유닛 위치 찾기
+    POSITION current_pos = { -1, -1 };
+
+    for (int row = 0; row < MAP_HEIGHT; row++) {
+        for (int col = 0; col < MAP_WIDTH; col++) {
+            if (map[1][row][col] == unit_symbol) {
+                current_pos.row = row;
+                current_pos.column = col;
+                break;
+            }
+        }
+        if (current_pos.row != -1) break;  // 유닛 위치를 찾으면 중단
+    }
+
+    if (current_pos.row == -1) {
+        add_system_message("하베스터 위치를 찾을 수 없습니다.", 1);
+        return;  // 유닛 위치가 없으면 함수 종료
+    }
+
+    // 이동 시작 메시지 출력
+    add_system_message("하베스터가 이동 중입니다...", 0);
+
+    // 이동 처리
+    Sleep(1000);  // 1초 대기 (이동 시간)
+
+    // 현재 위치에서 유닛 제거
+    map[1][current_pos.row][current_pos.column] = ' ';
+
+    // 새로운 위치에 유닛 배치
+    map[1][destination.row][destination.column] = unit_symbol;
+
+    // 이동 완료 메시지 출력
+    add_system_message("하베스터가 도착했습니다.", 3);
+
+    // 화면 갱신
+    display(resource, map, cursor);
+}
+
+
+void handle_move_harvester(int unit_symbol) {
+    POSITION destination = cursor.current;  // 커서 위치를 목표 지점으로 설정
+
+    // 목표 지점 확인
+    if (map[0][destination.row][destination.column] != ' ') {
+        add_system_message("목표 지점이 비어 있지 않습니다.", 1);
+        return;
+    }
+
+    // 하베스터 이동
+    move_harvester(unit_symbol, destination);
+}
+
+
+
+void cursor_move(DIRECTION dir, int steps) {
+    for (int i = 0; i < steps; i++) {
+        POSITION curr = cursor.current;
+        POSITION new_pos = pmove(curr, dir);
+
+
+        // 맵의 경계를 넘지 않도록 체크
+        if (1 <= new_pos.row && new_pos.row <= MAP_HEIGHT - 2 &&
+            1 <= new_pos.column && new_pos.column <= MAP_WIDTH - 2) {
+            cursor.previous = cursor.current; // 이전 위치 저장
+            cursor.current = new_pos;         // 현재 위치 업데이트
+
+            // 매 이동마다 화면 갱신을 위해 display_cursor 호출
+            display_cursor(cursor);
+            Sleep(TICK);  // 이동 시 딜레이 적용하여 움직임 시각화
+        }
+    }
+}
+
+void handle_double_click(KEY key) {
+    int now = sys_clock;
+    int steps = 1;
+
+    // 키가 이전에 눌린 키와 동일하고, 클릭 간의 시간 차이가 기준 이하일 때
+    if (key == last_arrow_key && (now - last_arrow_time) < DOUBLE_CLICK_THRESHOLD) {
+        steps = 4;  // 두 번 누를 시 네 칸 이동
+    }
+    cursor_move(ktod(key), steps);  // 이동 처리
+    last_arrow_key = key;
+    last_arrow_time = now;
+}
+
+void handle_selection(KEY key) {
+    should_update_status = 1;
+
+    // 현재 커서 위치에 있는 유닛 또는 건물 심볼을 가져옴
+    char symbol = map[0][cursor.current.row][cursor.current.column];
+    char unitSymbol = map[1][cursor.current.row][cursor.current.column];
+
+    // BASE -> UNIT 생산
+    base_selected = 0;  // 기본값으로 0 설정
+    for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
+        if (buildings[i].symbol == symbol && strcmp(buildings[i].name, "Base") == 0) {
+            base_selected = 1;  // Base가 선택되었음을 표시
+            break;
+        }
+    }
+
+    emptyspace_selected = 0; // 기본값으로 0 설정
+    for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
+        if (buildings[i].symbol == symbol && strcmp(buildings[i].name, "Empty Space") == 0) {
+            emptyspace_selected = 1; // Empty Space가 선택되었음을 표시
+            break;
+        }
+    }
+
+    // 유닛 선택 처리
+    UNIT* selected_unit = get_selected_unit(cursor.current);
+    if (selected_unit != NULL) {
+        is_unit_select_mode = true;  // 유닛 선택 모드 활성화
+        add_system_message("유닛이 선택되었습니다.", 0);  // 선택된 유닛 메시지 표시
+    }
+
+    // 선택된 객체 정보와 명령을 화면에 출력
+    display_object_info(symbol, cursor);  // 상태창에 정보 전달
+    display_commands(symbol, unitSymbol);  // 명령창에 명령어 전달
+}
+
+void handle_cancel() {
+    selection_active = 0;  // 선택 상태 비활성화
+    clear_line(object_info_pos, 80, 6);  // 상태창 지우기
 }
 
 void intro(void) {
@@ -591,72 +740,6 @@ void init(void) {
 
 }
 
-void cursor_move(DIRECTION dir, int steps) {
-    for (int i = 0; i < steps; i++) {
-        POSITION curr = cursor.current;
-        POSITION new_pos = pmove(curr, dir);
-
-
-        // 맵의 경계를 넘지 않도록 체크
-        if (1 <= new_pos.row && new_pos.row <= MAP_HEIGHT - 2 &&
-            1 <= new_pos.column && new_pos.column <= MAP_WIDTH - 2) {
-            cursor.previous = cursor.current; // 이전 위치 저장
-            cursor.current = new_pos;         // 현재 위치 업데이트
-
-            // 매 이동마다 화면 갱신을 위해 display_cursor 호출
-            display_cursor(cursor);
-            Sleep(TICK);  // 이동 시 딜레이 적용하여 움직임 시각화
-        }
-    }
-}
-
-void handle_double_click(KEY key) {
-    int now = sys_clock;
-    int steps = 1;
-
-    // 키가 이전에 눌린 키와 동일하고, 클릭 간의 시간 차이가 기준 이하일 때
-    if (key == last_arrow_key && (now - last_arrow_time) < DOUBLE_CLICK_THRESHOLD) {
-        steps  = 4;  // 두 번 누를 시 네 칸 이동
-    }
-    cursor_move(ktod(key), steps);  // 이동 처리
-    last_arrow_key = key;
-    last_arrow_time = now;
-}
-
-void handle_selection(KEY key) {
-    should_update_status = 1;
-   
-    // 현재 커서 위치에 있는 유닛 또는 건물 심볼을 가져옴
-    char symbol = map[0][cursor.current.row][cursor.current.column];
-    char unitSymbol = map[1][cursor.current.row][cursor.current.column];
-
-    //BASE->UNIT 생산
-    base_selected = 0;  // 기본값으로 0 설정
-    for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
-        if (buildings[i].symbol == symbol && strcmp(buildings[i].name, "Base") == 0) {
-            base_selected = 1;  // Base가 선택되었음을 표시
-            break;
-        }
-    }
-
-    emptyspace_selected = 0; // 기본값으로 0 설정
-    for (int i = 0; i < sizeof(buildings) / sizeof(buildings[0]); i++) {
-        if (buildings[i].symbol == symbol && strcmp(buildings[i].name, "Empty Space") == 0) {
-            emptyspace_selected = 1; // Empty Space가 선택되었음을 표시
-            break;
-        }
-    }
-
-    // 선택된 객체 정보를 각 창에 전달만 함
-    display_object_info(symbol, cursor);   // 상태창에 정보 전달
-    display_commands(symbol, unitSymbol);  // 명령창에 명령어 전달
-}
-
-void handle_cancel() {
-    selection_active = 0;  // 선택 상태 비활성화
-    clear_line(object_info_pos, 80,6);  // 상태창 지우기
-}
-
 
 /* ================= worm 이동 =================== */
 void update_worm_position(OBJECT_SAND* worm) {
@@ -698,7 +781,7 @@ void update_worm_position(OBJECT_SAND* worm) {
                 }
             }
             map[1][next_pos.row][next_pos.column] = -1;
-            add_system_message("샌드웜이 하베스터를 잡아먹었습니다!",1);
+            add_system_message("샌드웜이 하베스터를 잡아먹었습니다!", 1);
         }
     }
 
@@ -757,7 +840,7 @@ void generate_spice_at_position(int row, int col) {
     // 스파이스를 지정된 위치에 생성
     if (map[0][row][col] == ' ') {  // 빈 공간에만 생성
         map[0][row][col] = spice_amount + '0';  // 숫자를 문자로 변환해 맵에 저장
-        add_system_message("샌드웜이 스파이스를 배설했습니다!",0);
+        add_system_message("샌드웜이 스파이스를 배설했습니다!", 0);
     }
 }
 
